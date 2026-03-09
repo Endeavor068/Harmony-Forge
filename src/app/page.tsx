@@ -9,6 +9,7 @@ import { SongView } from "@/components/song-management/song-view";
 import { DeleteConfirm } from "@/components/song-management/delete-confirm";
 import { Song, NewSong } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { 
   useCollection, 
   useFirestore, 
@@ -28,7 +29,8 @@ export default function HarmonyForge() {
   const { user, isUserLoading } = useUser();
   const { toast } = useToast();
 
-  const [view, setView] = React.useState<"list" | "form" | "details">("list");
+  const [view, setView] = React.useState<"list" | "details">("list");
+  const [isFormOpen, setIsFormOpen] = React.useState(false);
   const [editingSong, setEditingSong] = React.useState<Song | null>(null);
   const [selectedSong, setSelectedSong] = React.useState<Song | null>(null);
   const [songToDelete, setSongToDelete] = React.useState<Song | null>(null);
@@ -50,12 +52,12 @@ export default function HarmonyForge() {
 
   const handleCreateNew = () => {
     setEditingSong(null);
-    setView("form");
+    setIsFormOpen(true);
   };
 
   const handleEdit = (song: Song) => {
     setEditingSong(song);
-    setView("form");
+    setIsFormOpen(true);
   };
 
   const handleSelect = (song: Song) => {
@@ -74,6 +76,7 @@ export default function HarmonyForge() {
       
       if (selectedSong?.id === songToDelete.id) {
         setView("list");
+        setSelectedSong(null);
       }
       
       toast({
@@ -103,7 +106,7 @@ export default function HarmonyForge() {
       addDocumentNonBlocking(colRef, newSongWithId);
       toast({ title: "Song created", description: "New song added to the collection." });
     }
-    setView("list");
+    setIsFormOpen(false);
   };
 
   const isLoading = isUserLoading || isSongsLoading;
@@ -171,26 +174,39 @@ export default function HarmonyForge() {
                 </div>
               )}
 
-              {view === "form" && (
-                <SongForm
-                  song={editingSong}
-                  onSave={handleSave}
-                  onCancel={() => setView("list")}
-                />
-              )}
-
               {view === "details" && selectedSong && (
                 <SongView
                   song={selectedSong}
                   onEdit={handleEdit}
                   onDelete={handleDeleteClick}
-                  onBack={() => setView("list")}
+                  onBack={() => {
+                    setView("list");
+                    setSelectedSong(null);
+                  }}
                 />
               )}
             </div>
           </div>
         )}
       </main>
+
+      {/* Form Sidebar (Sheet) */}
+      <Sheet open={isFormOpen} onOpenChange={setIsFormOpen}>
+        <SheetContent side="right" className="w-full sm:max-w-2xl p-0 overflow-hidden flex flex-col">
+          <SheetHeader className="p-6 border-b bg-muted/20">
+            <SheetTitle className="font-headline text-2xl text-primary">
+              {editingSong ? "Edit Song" : "Create New Song"}
+            </SheetTitle>
+          </SheetHeader>
+          <div className="flex-1 overflow-y-auto">
+            <SongForm
+              song={editingSong}
+              onSave={handleSave}
+              onCancel={() => setIsFormOpen(false)}
+            />
+          </div>
+        </SheetContent>
+      </Sheet>
 
       {/* Confirmation Dialog */}
       <DeleteConfirm
