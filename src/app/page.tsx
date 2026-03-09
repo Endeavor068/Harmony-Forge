@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -7,7 +8,7 @@ import { SongList } from "@/components/song-management/song-list";
 import { SongForm } from "@/components/song-management/song-form";
 import { SongView } from "@/components/song-management/song-view";
 import { DeleteConfirm } from "@/components/song-management/delete-confirm";
-import { Song, NewSong } from "@/lib/types";
+import { Song, NewSong, getDisplayTitle } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { 
@@ -81,7 +82,7 @@ export default function HarmonyForge() {
       
       toast({
         title: "Song deleted",
-        description: `"${songToDelete.title}" has been removed.`,
+        description: `"${getDisplayTitle(songToDelete)}" has been removed.`,
       });
       setSongToDelete(null);
     }
@@ -101,12 +102,10 @@ export default function HarmonyForge() {
       toast({ title: "Song updated", description: "Changes have been saved successfully." });
     } else {
       // Create new - Security rules require document ID to match internal 'id'
-      // We generate a custom ID for both the document path and the internal 'id' field
       const customId = Math.random().toString(36).substring(2, 11);
       const newSongWithId: Song = { ...songData, id: customId } as Song;
       const docRef = doc(db, "songs", customId);
       
-      // Use setDocumentNonBlocking to target the specific doc path
       setDocumentNonBlocking(docRef, newSongWithId, {});
       toast({ title: "Song created", description: "New song added to the collection." });
     }
@@ -202,7 +201,7 @@ export default function HarmonyForge() {
               {editingSong ? "Edit Song" : "Create New Song"}
             </SheetTitle>
             <SheetDescription className="text-muted-foreground">
-              {editingSong ? "Update the details of your song." : "Add a new song to your collection."}
+              {editingSong ? "Update the details and translations of your song." : "Add a new song to your collection in multiple languages."}
             </SheetDescription>
           </SheetHeader>
           <div className="flex-1 overflow-y-auto">
@@ -220,7 +219,7 @@ export default function HarmonyForge() {
         open={!!songToDelete}
         onOpenChange={(open) => !open && setSongToDelete(null)}
         onConfirm={confirmDelete}
-        songTitle={songToDelete?.title || ""}
+        songTitle={songToDelete ? getDisplayTitle(songToDelete) : ""}
       />
     </div>
   );

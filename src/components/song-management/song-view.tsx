@@ -1,8 +1,10 @@
+
 "use client";
 
-import { Song } from "@/lib/types";
+import * as React from "react";
+import { Song, getDisplayTitle } from "@/lib/types";
 import { Button } from "@/components/ui/button";
-import { Edit, Trash2, ChevronLeft, Calendar, User, Music, FileImage, Volume2 } from "lucide-react";
+import { Edit, Trash2, ChevronLeft, Calendar, User, Music, FileImage, Volume2, Languages } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
@@ -17,6 +19,12 @@ interface SongViewProps {
 }
 
 export function SongView({ song, onEdit, onDelete, onBack }: SongViewProps) {
+  const [lyricsLang, setLyricsLang] = React.useState<"en" | "fr">(
+    song.content.en?.title ? "en" : "fr"
+  );
+
+  const currentContent = song.content[lyricsLang];
+
   return (
     <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
       <Button variant="ghost" className="mb-2" onClick={onBack}>
@@ -34,7 +42,7 @@ export function SongView({ song, onEdit, onDelete, onBack }: SongViewProps) {
                 </span>
               </div>
               <CardTitle className="text-4xl font-headline font-bold text-primary leading-tight">
-                {song.title}
+                {currentContent?.title || getDisplayTitle(song)}
               </CardTitle>
               <div className="flex flex-wrap gap-4 pt-2">
                 <div className="flex items-center text-muted-foreground text-sm">
@@ -61,7 +69,7 @@ export function SongView({ song, onEdit, onDelete, onBack }: SongViewProps) {
         </CardHeader>
         <CardContent className="p-0">
           <Tabs defaultValue="lyrics" className="w-full">
-            <div className="px-8 pt-4 border-b bg-muted/5">
+            <div className="px-8 pt-4 border-b bg-muted/5 flex items-center justify-between">
               <TabsList className="bg-transparent h-12 gap-6 p-0">
                 <TabsTrigger 
                   value="lyrics" 
@@ -89,43 +97,69 @@ export function SongView({ song, onEdit, onDelete, onBack }: SongViewProps) {
                   </TabsTrigger>
                 )}
               </TabsList>
+
+              {/* Language Switcher for Lyrics */}
+              <div className="flex items-center gap-2 pb-2">
+                <Languages className="w-3.5 h-3.5 text-muted-foreground" />
+                <div className="flex bg-muted rounded-lg p-0.5">
+                  <button
+                    onClick={() => setLyricsLang("en")}
+                    className={`px-3 py-1 text-[10px] font-bold uppercase rounded-md transition-all ${lyricsLang === 'en' ? 'bg-white shadow-sm text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+                  >
+                    EN
+                  </button>
+                  <button
+                    onClick={() => setLyricsLang("fr")}
+                    className={`px-3 py-1 text-[10px] font-bold uppercase rounded-md transition-all ${lyricsLang === 'fr' ? 'bg-white shadow-sm text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+                  >
+                    FR
+                  </button>
+                </div>
+              </div>
             </div>
 
             <ScrollArea className="h-[65vh]">
               <TabsContent value="lyrics" className="p-8 m-0">
-                <div className="space-y-12">
-                  {/* Chorus (if it exists) */}
-                  {song.chorus && (
-                    <div className="relative p-6 bg-accent/5 rounded-2xl border border-accent/10">
-                      <div className="absolute -top-3 left-6 px-3 bg-white border border-accent/20 rounded-full flex items-center gap-1.5 shadow-sm">
-                        <Music className="w-3 h-3 text-accent" />
-                        <span className="text-[10px] font-bold text-accent uppercase tracking-widest">
-                          Chorus
-                        </span>
-                      </div>
-                      <p className="text-xl italic leading-relaxed text-foreground whitespace-pre-wrap font-body">
-                        {song.chorus}
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Verses */}
-                  <div className="space-y-10">
-                    {song.verses.map((verse, index) => (
-                      <div key={index} className="relative">
-                        <span className="absolute -top-6 left-0 text-[10px] font-bold text-primary/40 uppercase tracking-widest">
-                          Verse {index + 1}
-                        </span>
-                        <p className="text-lg leading-relaxed text-foreground whitespace-pre-wrap font-body">
-                          {verse}
+                {currentContent ? (
+                  <div className="space-y-12">
+                    {/* Chorus */}
+                    {currentContent.chorus && (
+                      <div className="relative p-6 bg-accent/5 rounded-2xl border border-accent/10">
+                        <div className="absolute -top-3 left-6 px-3 bg-white border border-accent/20 rounded-full flex items-center gap-1.5 shadow-sm">
+                          <Music className="w-3 h-3 text-accent" />
+                          <span className="text-[10px] font-bold text-accent uppercase tracking-widest">
+                            Chorus ({lyricsLang.toUpperCase()})
+                          </span>
+                        </div>
+                        <p className="text-xl italic leading-relaxed text-foreground whitespace-pre-wrap font-body">
+                          {currentContent.chorus}
                         </p>
-                        {index < song.verses.length - 1 && (
-                          <Separator className="mt-8 opacity-50 w-24" />
-                        )}
                       </div>
-                    ))}
+                    )}
+
+                    {/* Verses */}
+                    <div className="space-y-10">
+                      {currentContent.verses.map((verse, index) => (
+                        <div key={index} className="relative">
+                          <span className="absolute -top-6 left-0 text-[10px] font-bold text-primary/40 uppercase tracking-widest">
+                            Verse {index + 1} ({lyricsLang.toUpperCase()})
+                          </span>
+                          <p className="text-lg leading-relaxed text-foreground whitespace-pre-wrap font-body">
+                            {verse}
+                          </p>
+                          {index < currentContent.verses.length - 1 && (
+                            <Separator className="mt-8 opacity-50 w-24" />
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
+                    <Languages className="w-12 h-12 mb-4 opacity-20" />
+                    <p>No content available in {lyricsLang === 'en' ? 'English' : 'French'}.</p>
+                  </div>
+                )}
               </TabsContent>
 
               <TabsContent value="partition" className="p-8 m-0">
@@ -133,14 +167,14 @@ export function SongView({ song, onEdit, onDelete, onBack }: SongViewProps) {
                   <div className="relative w-full aspect-[1/1.4] bg-muted/20 rounded-lg overflow-hidden border">
                     <Image
                       src={song.partitionUrl || ""}
-                      alt={`Partition for ${song.title}`}
+                      alt={`Partition for ${getDisplayTitle(song)}`}
                       fill
                       className="object-contain"
                       unoptimized={song.partitionUrl?.startsWith('data:')}
                     />
                   </div>
                   <Button variant="outline" asChild>
-                    <a href={song.partitionUrl} download={`Partition_${song.title}`} target="_blank" rel="noopener noreferrer">
+                    <a href={song.partitionUrl} download={`Partition_${song.number}`} target="_blank" rel="noopener noreferrer">
                       View Full Size
                     </a>
                   </Button>

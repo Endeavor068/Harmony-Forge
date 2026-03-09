@@ -1,12 +1,12 @@
+
 "use client";
 
 import * as React from "react";
-import { Search, Edit, Trash2, Music, Filter } from "lucide-react";
+import { Search, Edit, Trash2, Music } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Song } from "@/lib/types";
+import { Song, getDisplayTitle } from "@/lib/types";
 
 interface SongListProps {
   songs: Song[];
@@ -20,8 +20,11 @@ export function SongList({ songs, onEdit, onDelete, onSelect }: SongListProps) {
 
   const filteredSongs = songs.filter((song) => {
     const searchLower = searchTerm.toLowerCase();
+    const enTitle = song.content.en?.title.toLowerCase() || "";
+    const frTitle = song.content.fr?.title.toLowerCase() || "";
     return (
-      song.title.toLowerCase().includes(searchLower) ||
+      enTitle.includes(searchLower) ||
+      frTitle.includes(searchLower) ||
       song.author.toLowerCase().includes(searchLower) ||
       song.number.toLowerCase().includes(searchLower)
     );
@@ -56,7 +59,7 @@ export function SongList({ songs, onEdit, onDelete, onSelect }: SongListProps) {
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="font-headline font-semibold text-lg truncate group-hover:text-primary transition-colors">
-                      {song.title}
+                      {getDisplayTitle(song)}
                     </h3>
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <span className="truncate">{song.author || "Unknown Author"}</span>

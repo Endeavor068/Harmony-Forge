@@ -1,13 +1,14 @@
+
 "use client";
 
 import * as React from "react";
-import { Plus, Trash2, Save, X, Music, FileImage, Volume2 } from "lucide-react";
+import { Plus, Trash2, Save, X, Music, FileImage, Volume2, Languages } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Song, NewSong } from "@/lib/types";
+import { Song, NewSong, SongContent } from "@/lib/types";
 
 interface SongFormProps {
   song?: Song | null;
@@ -15,23 +16,45 @@ interface SongFormProps {
   onCancel: () => void;
 }
 
+const emptyContent = (): SongContent => ({
+  title: "",
+  verses: [""],
+  chorus: "",
+});
+
 export function SongForm({ song, onSave, onCancel }: SongFormProps) {
   const [formData, setFormData] = React.useState<NewSong | Song>(
     song || {
       number: "",
-      title: "",
       author: "",
       year: "",
-      verses: [""],
-      chorus: "",
+      content: {
+        en: emptyContent(),
+        fr: emptyContent(),
+      },
       partitionUrl: "",
       audioUrl: "",
     }
   );
 
+  const [activeLang, setActiveLang] = React.useState<"en" | "fr">("en");
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleContentChange = (lang: "en" | "fr", field: keyof SongContent, value: any) => {
+    setFormData((prev) => ({
+      ...prev,
+      content: {
+        ...prev.content,
+        [lang]: {
+          ...prev.content[lang],
+          [field]: value,
+        },
+      },
+    }));
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, field: 'partitionUrl' | 'audioUrl') => {
@@ -45,81 +68,145 @@ export function SongForm({ song, onSave, onCancel }: SongFormProps) {
     }
   };
 
-  const handleVerseChange = (index: number, value: string) => {
-    const newVerses = [...formData.verses];
+  const handleVerseChange = (lang: "en" | "fr", index: number, value: string) => {
+    const currentContent = formData.content[lang] || emptyContent();
+    const newVerses = [...currentContent.verses];
     newVerses[index] = value;
-    setFormData((prev) => ({ ...prev, verses: newVerses }));
+    handleContentChange(lang, "verses", newVerses);
   };
 
-  const addVerse = () => {
-    setFormData((prev) => ({ ...prev, verses: [...prev.verses, ""] }));
+  const addVerse = (lang: "en" | "fr") => {
+    const currentContent = formData.content[lang] || emptyContent();
+    handleContentChange(lang, "verses", [...currentContent.verses, ""]);
   };
 
-  const removeVerse = (index: number) => {
-    setFormData((prev) => ({
-      ...prev,
-      verses: prev.verses.filter((_, i) => i !== index),
-    }));
+  const removeVerse = (lang: "en" | "fr", index: number) => {
+    const currentContent = formData.content[lang] || emptyContent();
+    handleContentChange(lang, "verses", currentContent.verses.filter((_, i) => i !== index));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    // Validate that at least one title is provided
+    const enTitle = formData.content.en?.title;
+    const frTitle = formData.content.fr?.title;
+    if (!enTitle && !frTitle) {
+      alert("Please provide at least one title (English or French)");
+      return;
+    }
     onSave(formData);
+  };
+
+  const renderLyricInputs = (lang: "en" | "fr") => {
+    const content = formData.content[lang] || emptyContent();
+    return (
+      <div className="space-y-6 animate-in fade-in duration-300">
+        <div className="space-y-2">
+          <Label htmlFor={`${lang}-title`}>Song Title ({lang.toUpperCase()})</Label>
+          <Input
+            id={`${lang}-title`}
+            value={content.title}
+            onChange={(e) => handleContentChange(lang, "title", e.target.value)}
+            placeholder={`Enter ${lang === 'en' ? 'English' : 'French'} title`}
+          />
+        </div>
+
+        <div className="space-y-2 p-4 bg-accent/5 rounded-xl border border-accent/10">
+          <div className="flex items-center gap-2 mb-2">
+            <Music className="w-4 h-4 text-accent" />
+            <Label htmlFor={`${lang}-chorus`} className="text-sm font-bold text-accent uppercase tracking-wider">Chorus ({lang.toUpperCase()})</Label>
+          </div>
+          <Textarea
+            id={`${lang}-chorus`}
+            value={content.chorus || ""}
+            onChange={(e) => handleContentChange(lang, "chorus", e.target.value)}
+            placeholder="Enter chorus text..."
+            className="min-h-[100px] resize-none border-accent/20 focus:border-accent/40"
+          />
+        </div>
+
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <Label className="text-lg font-headline">Verses ({lang.toUpperCase()})</Label>
+            <Button type="button" variant="outline" size="sm" onClick={() => addVerse(lang)} className="text-primary hover:text-primary/90 border-primary/20">
+              <Plus className="w-4 h-4 mr-2" />
+              Add Verse
+            </Button>
+          </div>
+          
+          {content.verses.map((verse, index) => (
+            <div key={index} className="relative group animate-in fade-in slide-in-from-left-2">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wider">Verse {index + 1}</Label>
+                  {content.verses.length > 1 && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6 text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={() => removeVerse(lang, index)}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  )}
+                </div>
+                <Textarea
+                  value={verse}
+                  onChange={(e) => handleVerseChange(lang, index, e.target.value)}
+                  placeholder="Enter verse text..."
+                  className="min-h-[100px] resize-none"
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
   };
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col h-full">
-      <div className="flex-1 p-6 space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="number">Song Number</Label>
-            <Input
-              id="number"
-              name="number"
-              value={formData.number}
-              onChange={handleChange}
-              placeholder="e.g. 001"
-              required
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="title">Song Title</Label>
-            <Input
-              id="title"
-              name="title"
-              value={formData.title}
-              onChange={handleChange}
-              placeholder="Enter song title"
-              required
-            />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="author">Author / Composer</Label>
-            <Input
-              id="author"
-              name="author"
-              value={formData.author}
-              onChange={handleChange}
-              placeholder="Artist name"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="year">Year</Label>
-            <Input
-              id="year"
-              name="year"
-              value={formData.year}
-              onChange={handleChange}
-              placeholder="Publication year"
-            />
+      <div className="flex-1 p-6 space-y-8">
+        {/* Global Metadata */}
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="number">Song Number</Label>
+              <Input
+                id="number"
+                name="number"
+                value={formData.number}
+                onChange={handleChange}
+                placeholder="e.g. 001"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="author">Author / Composer</Label>
+              <Input
+                id="author"
+                name="author"
+                value={formData.author}
+                onChange={handleChange}
+                placeholder="Artist name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="year">Year</Label>
+              <Input
+                id="year"
+                name="year"
+                value={formData.year}
+                onChange={handleChange}
+                placeholder="Publication year"
+              />
+            </div>
           </div>
         </div>
 
+        {/* Media Section */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-muted/30 rounded-2xl border border-primary/5">
-          {/* Partition Upload/URL */}
           <div className="space-y-3">
             <div className="flex items-center gap-2">
               <FileImage className="w-4 h-4 text-primary" />
@@ -150,7 +237,6 @@ export function SongForm({ song, onSave, onCancel }: SongFormProps) {
             </Tabs>
           </div>
 
-          {/* Audio Upload/URL */}
           <div className="space-y-3">
             <div className="flex items-center gap-2">
               <Volume2 className="w-4 h-4 text-primary" />
@@ -182,59 +268,24 @@ export function SongForm({ song, onSave, onCancel }: SongFormProps) {
           </div>
         </div>
 
-        {/* Chorus Section */}
-        <div className="space-y-2 p-4 bg-accent/5 rounded-xl border border-accent/10">
+        {/* Lyrics Translation Tabs */}
+        <div className="space-y-4">
           <div className="flex items-center gap-2 mb-2">
-            <Music className="w-4 h-4 text-accent" />
-            <Label htmlFor="chorus" className="text-sm font-bold text-accent uppercase tracking-wider">Chorus (Optional)</Label>
+            <Languages className="w-5 h-5 text-primary" />
+            <Label className="text-lg font-headline">Lyrics & Translations</Label>
           </div>
-          <Textarea
-            id="chorus"
-            name="chorus"
-            value={formData.chorus || ""}
-            onChange={handleChange}
-            placeholder="Enter chorus text..."
-            className="min-h-[100px] resize-none border-accent/20 focus:border-accent/40"
-          />
-        </div>
-
-        {/* Verses Section */}
-        <div className="space-y-4 pb-6">
-          <div className="flex items-center justify-between">
-            <Label className="text-lg font-headline">Verses</Label>
-            <Button type="button" variant="outline" size="sm" onClick={addVerse} className="text-primary hover:text-primary/90 border-primary/20">
-              <Plus className="w-4 h-4 mr-2" />
-              Add Verse
-            </Button>
-          </div>
-          
-          {formData.verses.map((verse, index) => (
-            <div key={index} className="relative group animate-in fade-in slide-in-from-left-2">
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs text-muted-foreground uppercase tracking-wider">Verse {index + 1}</Label>
-                  {formData.verses.length > 1 && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6 text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
-                      onClick={() => removeVerse(index)}
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </Button>
-                  )}
-                </div>
-                <Textarea
-                  value={verse}
-                  onChange={(e) => handleVerseChange(index, e.target.value)}
-                  placeholder="Enter verse text..."
-                  className="min-h-[100px] resize-none"
-                  required
-                />
-              </div>
-            </div>
-          ))}
+          <Tabs value={activeLang} onValueChange={(val) => setActiveLang(val as "en" | "fr")} className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="en">English Content</TabsTrigger>
+              <TabsTrigger value="fr">French Content</TabsTrigger>
+            </TabsList>
+            <TabsContent value="en" className="mt-6">
+              {renderLyricInputs("en")}
+            </TabsContent>
+            <TabsContent value="fr" className="mt-6">
+              {renderLyricInputs("fr")}
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
 

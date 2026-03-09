@@ -1,10 +1,11 @@
+
 {
   "entities": {
     "Song": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Song",
       "type": "object",
-      "description": "Represents a musical song or hymn, including its title, author, year of creation, and lyrics for its verses and chorus.",
+      "description": "Represents a musical song or hymn, supporting bilingual content in English and French.",
       "properties": {
         "id": {
           "type": "string",
@@ -14,10 +15,6 @@
           "type": "string",
           "description": "The identifying number assigned to the song (e.g., '001')."
         },
-        "title": {
-          "type": "string",
-          "description": "The primary title of the song."
-        },
         "author": {
           "type": "string",
           "description": "The creator or writer of the song."
@@ -26,16 +23,13 @@
           "type": "string",
           "description": "The year the song was composed or published."
         },
-        "verses": {
-          "type": "array",
-          "description": "An ordered list of verses for the song.",
-          "items": {
-            "type": "string"
+        "content": {
+          "type": "object",
+          "description": "Bilingual lyrics and title content.",
+          "properties": {
+            "en": { "$ref": "#/definitions/SongContent" },
+            "fr": { "$ref": "#/definitions/SongContent" }
           }
-        },
-        "chorus": {
-          "type": "string",
-          "description": "The lyrics for the song's chorus, if applicable."
         },
         "partitionUrl": {
           "type": "string",
@@ -49,10 +43,23 @@
       "required": [
         "id",
         "number",
-        "title",
         "author",
-        "verses"
-      ]
+        "content"
+      ],
+      "definitions": {
+        "SongContent": {
+          "type": "object",
+          "properties": {
+            "title": { "type": "string" },
+            "verses": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "chorus": { "type": "string" }
+          },
+          "required": ["title", "verses"]
+        }
+      }
     }
   },
   "auth": {
