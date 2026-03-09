@@ -4,15 +4,15 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Song",
       "type": "object",
-      "description": "Represents a musical song or hymn, including its title, author, year of creation, and lyrics for its choruses.",
+      "description": "Represents a musical song or hymn, including its title, author, year of creation, and lyrics for its verses and chorus.",
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique identifier for the Song entity."
+          "description": "Unique identifier for the Song entity, must match the document ID."
         },
-        "songNumber": {
-          "type": "number",
-          "description": "The unique identifying number assigned to the song."
+        "number": {
+          "type": "string",
+          "description": "The identifying number assigned to the song (e.g., '001')."
         },
         "title": {
           "type": "string",
@@ -23,24 +23,35 @@
           "description": "The creator or writer of the song."
         },
         "year": {
-          "type": "number",
+          "type": "string",
           "description": "The year the song was composed or published."
         },
-        "choruses": {
+        "verses": {
           "type": "array",
-          "description": "An ordered list of chorus lyrics for the song. Each item in the array represents a single chorus.",
+          "description": "An ordered list of verses for the song.",
           "items": {
             "type": "string"
           }
+        },
+        "chorus": {
+          "type": "string",
+          "description": "The lyrics for the song's chorus, if applicable."
+        },
+        "partitionUrl": {
+          "type": "string",
+          "description": "URL or Data URI for the sheet music image."
+        },
+        "audioUrl": {
+          "type": "string",
+          "description": "URL or Data URI for the audio recording."
         }
       },
       "required": [
         "id",
-        "songNumber",
+        "number",
         "title",
         "author",
-        "year",
-        "choruses"
+        "verses"
       ]
     }
   },
@@ -51,24 +62,11 @@
     ]
   },
   "firestore": {
-    "structure": [
-      {
-        "path": "/songs/{songId}",
-        "definition": {
-          "entityName": "Song",
-          "schema": {
-            "$ref": "#/backend/entities/Song"
-          },
-          "description": "Collection of all musical songs or hymns. All authenticated users can create, read, update, and delete songs in this shared, community-managed collection. This structure simplifies security rules as access is uniformly granted to any authenticated user, eliminating the need for denormalized authorization fields.",
-          "params": [
-            {
-              "name": "songId",
-              "description": "The unique identifier for a specific Song document."
-            }
-          ]
-        }
-      }
-    ],
-    "reasoning": "The recommended Firestore structure for HarmonyForge adopts a single, top-level collection named `/songs`. This design centralizes all `Song` entities, making them accessible and manageable by any authenticated user. This approach aligns perfectly with the core design principles by prioritizing simplicity and scalability, especially given the current application requirements that do not specify multi-tenancy or complex, role-based access for individual songs.\n\n**Authorization Independence:** This structure inherently achieves Authorization Independence. Each `Song` document exists as a top-level entity within its security context (the `/songs` collection). There are no parent documents whose attributes would dictate the access permissions of a `Song` document. Therefore, no authorization context denormalization is required, as the security rules will apply uniformly across all documents in the `/songs` collection, primarily checking for the presence of an authenticated user (`request.auth != null`) for all CRUD operations. This prevents the need for costly and complex `get()` calls in security rules, ensuring atomic operations and easier debugging.\n\n**Support for QAPs (Query As Proofs):** The `/songs` collection supports secure `list` operations (QAPs) directly. Since all documents within `/songs` share the same security posture (e.g., 'any authenticated user can view/manage'), a security rule such as `allow read, write: if request.auth != null;` can be applied at the collection level. This enables clients to fetch a list of all songs (`db.collection('songs').get()`) securely, knowing that all returned documents adhere to the authorization criteria. There is no need for client-side filtering or complex, inefficient rule-based filtering, as the structure itself enforces the homogeneous security requirement."
+    "/songs/{songId}": {
+      "schema": {
+        "$ref": "#/backend/entities/Song"
+      },
+      "description": "Collection of all musical songs or hymns. Document ID {songId} must match the 'id' field in the document data."
+    }
   }
 }

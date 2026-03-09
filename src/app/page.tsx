@@ -90,19 +90,23 @@ export default function HarmonyForge() {
   const handleSave = (songData: Song | NewSong) => {
     if (!db) return;
 
-    if ("id" in songData) {
+    if ("id" in songData && songData.id) {
       // Update existing
       const docRef = doc(db, "songs", songData.id);
       updateDocumentNonBlocking(docRef, songData);
       
-      if (selectedSong?.id === songData.id) setSelectedSong(songData);
+      if (selectedSong?.id === songData.id) {
+        setSelectedSong(songData as Song);
+      }
       toast({ title: "Song updated", description: "Changes have been saved successfully." });
     } else {
       // Create new - Security rules require document ID to match internal 'id'
-      const tempId = Math.random().toString(36).substr(2, 9);
-      const newSongWithId = { ...songData, id: tempId } as Song;
-      const docRef = doc(db, "songs", tempId);
+      // We generate a custom ID for both the document path and the internal 'id' field
+      const customId = Math.random().toString(36).substring(2, 11);
+      const newSongWithId: Song = { ...songData, id: customId } as Song;
+      const docRef = doc(db, "songs", customId);
       
+      // Use setDocumentNonBlocking to target the specific doc path
       setDocumentNonBlocking(docRef, newSongWithId, {});
       toast({ title: "Song created", description: "New song added to the collection." });
     }
@@ -198,7 +202,7 @@ export default function HarmonyForge() {
               {editingSong ? "Edit Song" : "Create New Song"}
             </SheetTitle>
             <SheetDescription className="text-muted-foreground">
-              Fill in the details below to {editingSong ? "update the existing" : "add a new"} song to the hymnal.
+              {editingSong ? "Update the details of your song." : "Add a new song to your collection."}
             </SheetDescription>
           </SheetHeader>
           <div className="flex-1 overflow-y-auto">
