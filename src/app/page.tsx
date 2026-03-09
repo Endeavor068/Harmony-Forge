@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from "react";
-import { Plus, Music2, Loader2, Download, FileJson, FileSpreadsheet } from "lucide-react";
+import { Plus, Music2, Loader2, Download, FileJson, FileSpreadsheet, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SongList } from "@/components/song-management/song-list";
 import { SongForm } from "@/components/song-management/song-form";
@@ -16,6 +16,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { 
   useCollection, 
@@ -41,6 +42,9 @@ export default function HarmonyForge() {
   const [editingSong, setEditingSong] = React.useState<Song | null>(null);
   const [selectedSong, setSelectedSong] = React.useState<Song | null>(null);
   const [songToDelete, setSongToDelete] = React.useState<Song | null>(null);
+  
+  const jsonInputRef = React.useRef<HTMLInputElement>(null);
+  const csvInputRef = React.useRef<HTMLInputElement>(null);
 
   // Ensure user is signed in anonymously to satisfy security rules
   React.useEffect(() => {
@@ -165,10 +169,81 @@ export default function HarmonyForge() {
     toast({ title: "Export Complete", description: "Metadata exported as CSV file." });
   };
 
+  const handleImportJSON = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !db) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const importedData = JSON.parse(event.target?.result as string);
+        if (Array.isArray(importedData)) {
+          importedData.forEach((song: Song) => {
+            const id = song.id || Math.random().toString(36).substring(2, 11);
+            const songToSave = { ...song, id };
+            const docRef = doc(db, "songs", id);
+            setDocumentNonBlocking(docRef, songToSave, {});
+          });
+          toast({ title: "Import Successful", description: `${importedData.length} songs imported from JSON.` });
+        }
+      } catch (err) {
+        toast({ variant: "destructive", title: "Import Failed", description: "Invalid JSON format." });
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  };
+
+  const handleImportCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !db) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target?.result as string;
+      const lines = text.split("\n").filter(line => line.trim() !== "");
+      if (lines.length < 2) return;
+
+      const results: Song[] = [];
+      // Simple CSV parser for standard quotes/commas
+      for (let i = 1; i < lines.length; i++) {
+        const parts = lines[i].match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
+        if (parts && parts.length >= 11) {
+          const clean = (s: string) => s.replace(/^"|"$/g, '').replace(/""/g, '"');
+          const [id, enNum, enTitle, enAuthor, enYear, frNum, frTitle, frAuthor, frYear, pUrl, aUrl] = parts.map(clean);
+          
+          const songId = id || Math.random().toString(36).substring(2, 11);
+          results.push({
+            id: songId,
+            content: {
+              en: { number: enNum, title: enTitle, author: enAuthor, year: enYear, verses: [], chorus: "" },
+              fr: { number: frNum, title: frTitle, author: frAuthor, year: frYear, verses: [], chorus: "" },
+            },
+            partitionUrl: pUrl,
+            audioUrl: aUrl
+          });
+        }
+      }
+
+      results.forEach(song => {
+        const docRef = doc(db, "songs", song.id);
+        setDocumentNonBlocking(docRef, song, {});
+      });
+
+      toast({ title: "Import Successful", description: `${results.length} songs imported from CSV metadata.` });
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  };
+
   const isLoading = isUserLoading || isSongsLoading;
 
   return (
     <div className="min-h-screen bg-background text-foreground selection:bg-accent/30">
+      {/* Hidden Inputs for Import */}
+      <input type="file" accept=".json" ref={jsonInputRef} onChange={handleImportJSON} className="hidden" />
+      <input type="file" accept=".csv" ref={csvInputRef} onChange={handleImportCSV} className="hidden" />
+
       {/* Header */}
       <header className="sticky top-0 z-10 bg-white/70 backdrop-blur-md border-b border-primary/10 px-6 py-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
@@ -182,6 +257,25 @@ export default function HarmonyForge() {
           </div>
           
           <div className="flex items-center gap-3">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" disabled={isLoading} className="hidden sm:flex">
+                  <Upload className="w-4 h-4 mr-2" />
+                  Import
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem onClick={() => jsonInputRef.current?.click()}>
+                  <FileJson className="w-4 h-4 mr-2" />
+                  Import JSON
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => csvInputRef.current?.click()}>
+                  <FileSpreadsheet className="w-4 h-4 mr-2" />
+                  Import CSV
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" disabled={isLoading || !songs?.length} className="hidden sm:flex">
