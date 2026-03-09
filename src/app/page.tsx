@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from "react";
-import { Plus, Music2, Loader2 } from "lucide-react";
+import { Plus, Music2, Loader2, Download, FileJson, FileSpreadsheet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SongList } from "@/components/song-management/song-list";
 import { SongForm } from "@/components/song-management/song-form";
@@ -11,6 +11,12 @@ import { DeleteConfirm } from "@/components/song-management/delete-confirm";
 import { Song, NewSong, getDisplayTitle } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { 
   useCollection, 
   useFirestore, 
@@ -112,6 +118,53 @@ export default function HarmonyForge() {
     setIsFormOpen(false);
   };
 
+  const exportToJSON = () => {
+    if (!songs) return;
+    const jsonString = JSON.stringify(songs, null, 2);
+    const blob = new Blob([jsonString], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `harmonyforge_export_${new Date().toISOString().split('T')[0]}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+    toast({ title: "Export Complete", description: "Collection exported as JSON file." });
+  };
+
+  const exportToCSV = () => {
+    if (!songs) return;
+    const headers = [
+      "ID",
+      "EN_Number", "EN_Title", "EN_Author", "EN_Year",
+      "FR_Number", "FR_Title", "FR_Author", "FR_Year",
+      "PartitionURL", "AudioURL"
+    ];
+    
+    const rows = songs.map(s => [
+      s.id,
+      s.content?.en?.number || "",
+      s.content?.en?.title || "",
+      s.content?.en?.author || "",
+      s.content?.en?.year || "",
+      s.content?.fr?.number || "",
+      s.content?.fr?.title || "",
+      s.content?.fr?.author || "",
+      s.content?.fr?.year || "",
+      s.partitionUrl || "",
+      s.audioUrl || ""
+    ].map(val => `"${String(val).replace(/"/g, '""')}"`).join(","));
+
+    const csvContent = [headers.join(","), ...rows].join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `harmonyforge_metadata_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+    toast({ title: "Export Complete", description: "Metadata exported as CSV file." });
+  };
+
   const isLoading = isUserLoading || isSongsLoading;
 
   return (
@@ -127,10 +180,32 @@ export default function HarmonyForge() {
               HarmonyForge
             </h1>
           </div>
-          <Button onClick={handleCreateNew} disabled={isLoading} className="bg-accent hover:bg-accent/90 text-accent-foreground shadow-lg shadow-accent/20">
-            <Plus className="w-4 h-4 mr-2" />
-            New Song
-          </Button>
+          
+          <div className="flex items-center gap-3">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" disabled={isLoading || !songs?.length} className="hidden sm:flex">
+                  <Download className="w-4 h-4 mr-2" />
+                  Export
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem onClick={exportToJSON}>
+                  <FileJson className="w-4 h-4 mr-2" />
+                  Export as JSON
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={exportToCSV}>
+                  <FileSpreadsheet className="w-4 h-4 mr-2" />
+                  Export as CSV
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <Button onClick={handleCreateNew} disabled={isLoading} className="bg-accent hover:bg-accent/90 text-accent-foreground shadow-lg shadow-accent/20">
+              <Plus className="w-4 h-4 mr-2" />
+              New Song
+            </Button>
+          </div>
         </div>
       </header>
 
