@@ -20,13 +20,16 @@ export function SongList({ songs, onEdit, onDelete, onSelect }: SongListProps) {
 
   const filteredSongs = songs.filter((song) => {
     const searchLower = searchTerm.toLowerCase();
-    const enTitle = song.content.en?.title.toLowerCase() || "";
-    const frTitle = song.content.fr?.title.toLowerCase() || "";
+    const enTitle = song.content?.en?.title?.toLowerCase() || "";
+    const frTitle = song.content?.fr?.title?.toLowerCase() || "";
+    const author = song.author?.toLowerCase() || "";
+    const number = song.number?.toLowerCase() || "";
+    
     return (
       enTitle.includes(searchLower) ||
       frTitle.includes(searchLower) ||
-      song.author.toLowerCase().includes(searchLower) ||
-      song.number.toLowerCase().includes(searchLower)
+      author.includes(searchLower) ||
+      number.includes(searchLower)
     );
   });
 

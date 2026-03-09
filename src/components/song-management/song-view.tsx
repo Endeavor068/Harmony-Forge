@@ -20,10 +20,10 @@ interface SongViewProps {
 
 export function SongView({ song, onEdit, onDelete, onBack }: SongViewProps) {
   const [lyricsLang, setLyricsLang] = React.useState<"en" | "fr">(
-    song.content.en?.title ? "en" : "fr"
+    song.content?.en?.title ? "en" : "fr"
   );
 
-  const currentContent = song.content[lyricsLang];
+  const currentContent = song.content?.[lyricsLang];
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">

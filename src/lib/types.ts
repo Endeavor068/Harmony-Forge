@@ -21,5 +21,5 @@ export interface Song {
 export type NewSong = Omit<Song, 'id'>;
 
 export const getDisplayTitle = (song: Song) => {
-  return song.content.en?.title || song.content.fr?.title || "Untitled Song";
+  return song.content?.en?.title || song.content?.fr?.title || "Untitled Song";
 };
