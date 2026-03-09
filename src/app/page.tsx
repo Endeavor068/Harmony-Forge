@@ -171,67 +171,123 @@ export default function HarmonyForge() {
 
   const handleImportJSON = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !db) return;
+    if (!file) return;
+    if (!db) {
+      toast({ variant: "destructive", title: "Connection Error", description: "Database not ready. Please wait." });
+      return;
+    }
 
     const reader = new FileReader();
     reader.onload = (event) => {
       try {
-        const importedData = JSON.parse(event.target?.result as string);
-        if (Array.isArray(importedData)) {
-          importedData.forEach((song: Song) => {
-            const id = song.id || Math.random().toString(36).substring(2, 11);
-            const songToSave = { ...song, id };
-            const docRef = doc(db, "songs", id);
-            setDocumentNonBlocking(docRef, songToSave, {});
-          });
-          toast({ title: "Import Successful", description: `${importedData.length} songs imported from JSON.` });
+        const result = event.target?.result;
+        if (typeof result !== 'string') throw new Error("File content is not text");
+        
+        const importedData = JSON.parse(result);
+        if (!Array.isArray(importedData)) throw new Error("Imported data must be an array of songs.");
+
+        let count = 0;
+        importedData.forEach((song: any) => {
+          if (!song.content) return;
+          
+          const id = song.id || Math.random().toString(36).substring(2, 11);
+          const songToSave = { ...song, id };
+          const docRef = doc(db, "songs", id);
+          setDocumentNonBlocking(docRef, songToSave, {});
+          count++;
+        });
+
+        if (count > 0) {
+          toast({ title: "Import Successful", description: `${count} songs imported from JSON.` });
+        } else {
+          toast({ variant: "destructive", title: "Import Failed", description: "No valid songs found in file." });
         }
-      } catch (err) {
-        toast({ variant: "destructive", title: "Import Failed", description: "Invalid JSON format." });
+      } catch (err: any) {
+        toast({ variant: "destructive", title: "Import Failed", description: err.message || "Invalid JSON format." });
       }
     };
+    reader.onerror = () => toast({ variant: "destructive", title: "Error", description: "Could not read file." });
     reader.readAsText(file);
     e.target.value = "";
   };
 
   const handleImportCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !db) return;
+    if (!file) return;
+    if (!db) {
+      toast({ variant: "destructive", title: "Connection Error", description: "Database not ready. Please wait." });
+      return;
+    }
 
     const reader = new FileReader();
     reader.onload = (event) => {
-      const text = event.target?.result as string;
-      const lines = text.split("\n").filter(line => line.trim() !== "");
-      if (lines.length < 2) return;
-
-      const results: Song[] = [];
-      // Simple CSV parser for standard quotes/commas
-      for (let i = 1; i < lines.length; i++) {
-        const parts = lines[i].match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
-        if (parts && parts.length >= 11) {
-          const clean = (s: string) => s.replace(/^"|"$/g, '').replace(/""/g, '"');
-          const [id, enNum, enTitle, enAuthor, enYear, frNum, frTitle, frAuthor, frYear, pUrl, aUrl] = parts.map(clean);
-          
-          const songId = id || Math.random().toString(36).substring(2, 11);
-          results.push({
-            id: songId,
-            content: {
-              en: { number: enNum, title: enTitle, author: enAuthor, year: enYear, verses: [], chorus: "" },
-              fr: { number: frNum, title: frTitle, author: frAuthor, year: frYear, verses: [], chorus: "" },
-            },
-            partitionUrl: pUrl,
-            audioUrl: aUrl
-          });
+      try {
+        const text = event.target?.result as string;
+        const lines = text.split(/\r?\n/).filter(line => line.trim() !== "");
+        if (lines.length < 2) {
+          toast({ variant: "destructive", title: "Import Failed", description: "CSV file is empty or missing data." });
+          return;
         }
+
+        let count = 0;
+        for (let i = 1; i < lines.length; i++) {
+          const line = lines[i];
+          // Robust CSV split that handles quotes and commas
+          const parts = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+          
+          if (parts && parts.length >= 11) {
+            const clean = (s: string) => {
+              if (!s) return "";
+              let val = s.trim();
+              if (val.startsWith('"') && val.endsWith('"')) {
+                val = val.substring(1, val.length - 1);
+              }
+              return val.replace(/""/g, '"');
+            };
+
+            const [id, enNum, enTitle, enAuthor, enYear, frNum, frTitle, frAuthor, frYear, pUrl, aUrl] = parts.map(clean);
+            
+            const songId = id || Math.random().toString(36).substring(2, 11);
+            const song: Song = {
+              id: songId,
+              content: {
+                en: { 
+                  number: enNum || "", 
+                  title: enTitle || "", 
+                  author: enAuthor || "", 
+                  year: enYear || "", 
+                  verses: [], 
+                  chorus: "" 
+                },
+                fr: { 
+                  number: frNum || "", 
+                  title: frTitle || "", 
+                  author: frAuthor || "", 
+                  year: frYear || "", 
+                  verses: [], 
+                  chorus: "" 
+                },
+              },
+              partitionUrl: pUrl || "",
+              audioUrl: aUrl || ""
+            };
+            
+            const docRef = doc(db, "songs", songId);
+            setDocumentNonBlocking(docRef, song, {});
+            count++;
+          }
+        }
+
+        if (count > 0) {
+          toast({ title: "Import Successful", description: `${count} songs imported from CSV metadata.` });
+        } else {
+          toast({ variant: "destructive", title: "Import Failed", description: "No valid rows found in CSV." });
+        }
+      } catch (err) {
+        toast({ variant: "destructive", title: "Import Failed", description: "Error processing CSV file." });
       }
-
-      results.forEach(song => {
-        const docRef = doc(db, "songs", song.id);
-        setDocumentNonBlocking(docRef, song, {});
-      });
-
-      toast({ title: "Import Successful", description: `${results.length} songs imported from CSV metadata.` });
     };
+    reader.onerror = () => toast({ variant: "destructive", title: "Error", description: "Could not read file." });
     reader.readAsText(file);
     e.target.value = "";
   };
