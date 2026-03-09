@@ -9,14 +9,14 @@ import { SongView } from "@/components/song-management/song-view";
 import { DeleteConfirm } from "@/components/song-management/delete-confirm";
 import { Song, NewSong } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { 
   useCollection, 
   useFirestore, 
   useAuth, 
   useUser, 
   useMemoFirebase,
-  addDocumentNonBlocking,
+  setDocumentNonBlocking,
   updateDocumentNonBlocking,
   deleteDocumentNonBlocking,
   initiateAnonymousSignIn
@@ -98,12 +98,12 @@ export default function HarmonyForge() {
       if (selectedSong?.id === songData.id) setSelectedSong(songData);
       toast({ title: "Song updated", description: "Changes have been saved successfully." });
     } else {
-      // Create new
-      const colRef = collection(db, "songs");
+      // Create new - Security rules require document ID to match internal 'id'
       const tempId = Math.random().toString(36).substr(2, 9);
-      const newSongWithId = { ...songData, id: tempId };
+      const newSongWithId = { ...songData, id: tempId } as Song;
+      const docRef = doc(db, "songs", tempId);
       
-      addDocumentNonBlocking(colRef, newSongWithId);
+      setDocumentNonBlocking(docRef, newSongWithId, {});
       toast({ title: "Song created", description: "New song added to the collection." });
     }
     setIsFormOpen(false);
@@ -197,6 +197,9 @@ export default function HarmonyForge() {
             <SheetTitle className="font-headline text-2xl text-primary">
               {editingSong ? "Edit Song" : "Create New Song"}
             </SheetTitle>
+            <SheetDescription className="text-muted-foreground">
+              Fill in the details below to {editingSong ? "update the existing" : "add a new"} song to the hymnal.
+            </SheetDescription>
           </SheetHeader>
           <div className="flex-1 overflow-y-auto">
             <SongForm
