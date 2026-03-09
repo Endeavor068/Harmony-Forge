@@ -1,12 +1,13 @@
 "use client";
 
 import * as React from "react";
-import { Plus, Trash2, Save, X, Music } from "lucide-react";
+import { Plus, Trash2, Save, X, Music, FileImage, Volume2, Link as LinkIcon, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Song, NewSong } from "@/lib/types";
 
 interface SongFormProps {
@@ -24,12 +25,25 @@ export function SongForm({ song, onSave, onCancel }: SongFormProps) {
       year: "",
       verses: [""],
       chorus: "",
+      partitionUrl: "",
+      audioUrl: "",
     }
   );
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, field: 'partitionUrl' | 'audioUrl') => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData((prev) => ({ ...prev, [field]: reader.result as string }));
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleVerseChange = (index: number, value: string) => {
@@ -108,6 +122,82 @@ export function SongForm({ song, onSave, onCancel }: SongFormProps) {
                 onChange={handleChange}
                 placeholder="Publication year"
               />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-muted/30 rounded-2xl border border-primary/5">
+            {/* Partition Upload/URL */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <FileImage className="w-4 h-4 text-primary" />
+                <Label className="text-sm font-semibold text-primary/80">Partition / Sheet Music</Label>
+              </div>
+              <Tabs defaultValue="url" className="w-full">
+                <TabsList className="grid w-full grid-cols-2 h-8">
+                  <TabsTrigger value="url" className="text-xs">URL</TabsTrigger>
+                  <TabsTrigger value="upload" className="text-xs">Upload</TabsTrigger>
+                </TabsList>
+                <TabsContent value="url" className="mt-2">
+                  <Input
+                    name="partitionUrl"
+                    value={formData.partitionUrl || ""}
+                    onChange={handleChange}
+                    placeholder="Image URL..."
+                    className="h-8 text-xs"
+                  />
+                </TabsContent>
+                <TabsContent value="upload" className="mt-2">
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => handleFileUpload(e, 'partitionUrl')}
+                      className="h-8 text-xs cursor-pointer"
+                    />
+                  </div>
+                </TabsContent>
+              </Tabs>
+              {formData.partitionUrl && (
+                <div className="text-[10px] text-muted-foreground truncate">
+                  Source: {formData.partitionUrl.startsWith('data:') ? 'Uploaded File' : formData.partitionUrl}
+                </div>
+              )}
+            </div>
+
+            {/* Audio Upload/URL */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Volume2 className="w-4 h-4 text-primary" />
+                <Label className="text-sm font-semibold text-primary/80">Audio Recording</Label>
+              </div>
+              <Tabs defaultValue="url" className="w-full">
+                <TabsList className="grid w-full grid-cols-2 h-8">
+                  <TabsTrigger value="url" className="text-xs">URL</TabsTrigger>
+                  <TabsTrigger value="upload" className="text-xs">Upload</TabsTrigger>
+                </TabsList>
+                <TabsContent value="url" className="mt-2">
+                  <Input
+                    name="audioUrl"
+                    value={formData.audioUrl || ""}
+                    onChange={handleChange}
+                    placeholder="Audio URL..."
+                    className="h-8 text-xs"
+                  />
+                </TabsContent>
+                <TabsContent value="upload" className="mt-2">
+                  <Input
+                    type="file"
+                    accept="audio/*"
+                    onChange={(e) => handleFileUpload(e, 'audioUrl')}
+                    className="h-8 text-xs cursor-pointer"
+                  />
+                </TabsContent>
+              </Tabs>
+              {formData.audioUrl && (
+                <div className="text-[10px] text-muted-foreground truncate">
+                  Source: {formData.audioUrl.startsWith('data:') ? 'Uploaded File' : formData.audioUrl}
+                </div>
+              )}
             </div>
           </div>
 

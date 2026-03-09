@@ -6,6 +6,8 @@ export interface Song {
   year: string;
   verses: string[];
   chorus?: string;
+  partitionUrl?: string;
+  audioUrl?: string;
 }
 
 export type NewSong = Omit<Song, 'id'>;
