@@ -4,7 +4,8 @@ export interface Song {
   title: string;
   author: string;
   year: string;
-  choruses: string[];
+  verses: string[];
+  chorus?: string;
 }
 
 export type NewSong = Omit<Song, 'id'>;

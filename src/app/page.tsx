@@ -17,10 +17,11 @@ const INITIAL_SONGS: Song[] = [
     title: "Celestial Echoes",
     author: "Elena Vance",
     year: "2023",
-    choruses: [
+    verses: [
       "In the silence of the spheres,\nWhispers found across the years,\nLight of ancient stars descend,\nPeace that has no earthly end.",
       "Voices rise in perfect chord,\nSinging praises to the Lord,\nSymphony of endless grace,\nFound within this hallowed space."
     ],
+    chorus: "Glory in the highest height,\nGuiding us through darkest night."
   },
   {
     id: "2",
@@ -28,7 +29,7 @@ const INITIAL_SONGS: Song[] = [
     title: "River of Tranquility",
     author: "Julian Rivers",
     year: "2021",
-    choruses: [
+    verses: [
       "Flowing through the thirsty land,\nGuided by a gentle hand,\nLet your mercy like a flood,\nWash the spirit, heal the blood."
     ],
   },
@@ -116,7 +117,7 @@ export default function HarmonyForge() {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-6 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-          {/* List Section (Hidden on detail view on mobile, visible on desktop) */}
+          {/* List Section */}
           <div className={`${view === 'details' ? 'hidden lg:block' : 'block'} lg:col-span-5`}>
             <div className="sticky top-24">
               <div className="mb-6 flex items-center justify-between">

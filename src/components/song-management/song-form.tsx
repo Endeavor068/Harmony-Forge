@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Plus, Trash2, Save, X } from "lucide-react";
+import { Plus, Trash2, Save, X, Music } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,7 +22,8 @@ export function SongForm({ song, onSave, onCancel }: SongFormProps) {
       title: "",
       author: "",
       year: "",
-      choruses: [""],
+      verses: [""],
+      chorus: "",
     }
   );
 
@@ -31,20 +32,20 @@ export function SongForm({ song, onSave, onCancel }: SongFormProps) {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleChorusChange = (index: number, value: string) => {
-    const newChoruses = [...formData.choruses];
-    newChoruses[index] = value;
-    setFormData((prev) => ({ ...prev, choruses: newChoruses }));
+  const handleVerseChange = (index: number, value: string) => {
+    const newVerses = [...formData.verses];
+    newVerses[index] = value;
+    setFormData((prev) => ({ ...prev, verses: newVerses }));
   };
 
-  const addChorus = () => {
-    setFormData((prev) => ({ ...prev, choruses: [...prev.choruses, ""] }));
+  const addVerse = () => {
+    setFormData((prev) => ({ ...prev, verses: [...prev.verses, ""] }));
   };
 
-  const removeChorus = (index: number) => {
+  const removeVerse = (index: number) => {
     setFormData((prev) => ({
       ...prev,
-      choruses: prev.choruses.filter((_, i) => i !== index),
+      verses: prev.verses.filter((_, i) => i !== index),
     }));
   };
 
@@ -110,36 +111,53 @@ export function SongForm({ song, onSave, onCancel }: SongFormProps) {
             </div>
           </div>
 
+          {/* Chorus Section */}
+          <div className="space-y-2 p-4 bg-accent/5 rounded-xl border border-accent/10">
+            <div className="flex items-center gap-2 mb-2">
+              <Music className="w-4 h-4 text-accent" />
+              <Label htmlFor="chorus" className="text-sm font-bold text-accent uppercase tracking-wider">Chorus (Optional)</Label>
+            </div>
+            <Textarea
+              id="chorus"
+              name="chorus"
+              value={formData.chorus || ""}
+              onChange={handleChange}
+              placeholder="Enter chorus text..."
+              className="min-h-[100px] resize-none border-accent/20 focus:border-accent/40"
+            />
+          </div>
+
+          {/* Verses Section */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <Label className="text-lg font-headline">Choruses</Label>
-              <Button type="button" variant="outline" size="sm" onClick={addChorus} className="text-accent hover:text-accent/90 border-accent/20">
+              <Label className="text-lg font-headline">Verses</Label>
+              <Button type="button" variant="outline" size="sm" onClick={addVerse} className="text-primary hover:text-primary/90 border-primary/20">
                 <Plus className="w-4 h-4 mr-2" />
-                Add Chorus
+                Add Verse
               </Button>
             </div>
             
-            {formData.choruses.map((chorus, index) => (
+            {formData.verses.map((verse, index) => (
               <div key={index} className="relative group animate-in fade-in slide-in-from-left-2">
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <Label className="text-xs text-muted-foreground uppercase tracking-wider">Chorus {index + 1}</Label>
-                    {formData.choruses.length > 1 && (
+                    <Label className="text-xs text-muted-foreground uppercase tracking-wider">Verse {index + 1}</Label>
+                    {formData.verses.length > 1 && (
                       <Button
                         type="button"
                         variant="ghost"
                         size="icon"
                         className="h-6 w-6 text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
-                        onClick={() => removeChorus(index)}
+                        onClick={() => removeVerse(index)}
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </Button>
                     )}
                   </div>
                   <Textarea
-                    value={chorus}
-                    onChange={(e) => handleChorusChange(index, e.target.value)}
-                    placeholder="Enter chorus text..."
+                    value={verse}
+                    onChange={(e) => handleVerseChange(index, e.target.value)}
+                    placeholder="Enter verse text..."
                     className="min-h-[100px] resize-none"
                     required
                   />

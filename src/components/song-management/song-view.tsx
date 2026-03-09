@@ -2,9 +2,10 @@
 
 import { Song } from "@/lib/types";
 import { Button } from "@/components/ui/button";
-import { Edit, Trash2, ChevronLeft, Calendar, User } from "lucide-react";
+import { Edit, Trash2, ChevronLeft, Calendar, User, Music } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
 
 interface SongViewProps {
   song: Song;
@@ -57,18 +58,39 @@ export function SongView({ song, onEdit, onDelete, onBack }: SongViewProps) {
           </div>
         </CardHeader>
         <CardContent className="p-0">
-          <ScrollArea className="max-h-[60vh] p-8">
+          <ScrollArea className="max-h-[65vh] p-8">
             <div className="space-y-12">
-              {song.choruses.map((chorus, index) => (
-                <div key={index} className="relative">
-                  <span className="absolute -top-6 left-0 text-[10px] font-bold text-accent uppercase tracking-widest">
-                    Chorus {index + 1}
-                  </span>
-                  <p className="text-lg leading-relaxed text-foreground whitespace-pre-wrap font-body">
-                    {chorus}
+              {/* Chorus (if it exists) */}
+              {song.chorus && (
+                <div className="relative p-6 bg-accent/5 rounded-2xl border border-accent/10">
+                  <div className="absolute -top-3 left-6 px-3 bg-white border border-accent/20 rounded-full flex items-center gap-1.5 shadow-sm">
+                    <Music className="w-3 h-3 text-accent" />
+                    <span className="text-[10px] font-bold text-accent uppercase tracking-widest">
+                      Chorus
+                    </span>
+                  </div>
+                  <p className="text-xl italic leading-relaxed text-foreground whitespace-pre-wrap font-body">
+                    {song.chorus}
                   </p>
                 </div>
-              ))}
+              )}
+
+              {/* Verses */}
+              <div className="space-y-10">
+                {song.verses.map((verse, index) => (
+                  <div key={index} className="relative">
+                    <span className="absolute -top-6 left-0 text-[10px] font-bold text-primary/40 uppercase tracking-widest">
+                      Verse {index + 1}
+                    </span>
+                    <p className="text-lg leading-relaxed text-foreground whitespace-pre-wrap font-body">
+                      {verse}
+                    </p>
+                    {index < song.verses.length - 1 && (
+                      <Separator className="mt-8 opacity-50 w-24" />
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
           </ScrollArea>
         </CardContent>
