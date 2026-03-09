@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -38,7 +37,7 @@ export function SongView({ song, onEdit, onDelete, onBack }: SongViewProps) {
             <div className="space-y-2">
               <div className="flex items-center gap-3">
                 <span className="px-3 py-1 rounded-full bg-primary text-white text-xs font-bold font-headline">
-                  #{song.number}
+                  #{currentContent?.number || "???"}
                 </span>
               </div>
               <CardTitle className="text-4xl font-headline font-bold text-primary leading-tight">
@@ -47,12 +46,12 @@ export function SongView({ song, onEdit, onDelete, onBack }: SongViewProps) {
               <div className="flex flex-wrap gap-4 pt-2">
                 <div className="flex items-center text-muted-foreground text-sm">
                   <User className="w-4 h-4 mr-1.5" />
-                  {song.author || "Anonymous"}
+                  {currentContent?.author || "Anonymous"}
                 </div>
-                {song.year && (
+                {currentContent?.year && (
                   <div className="flex items-center text-muted-foreground text-sm">
                     <Calendar className="w-4 h-4 mr-1.5" />
-                    {song.year}
+                    {currentContent.year}
                   </div>
                 )}
               </div>
@@ -98,7 +97,6 @@ export function SongView({ song, onEdit, onDelete, onBack }: SongViewProps) {
                 )}
               </TabsList>
 
-              {/* Language Switcher for Lyrics */}
               <div className="flex items-center gap-2 pb-2">
                 <Languages className="w-3.5 h-3.5 text-muted-foreground" />
                 <div className="flex bg-muted rounded-lg p-0.5">
@@ -122,7 +120,6 @@ export function SongView({ song, onEdit, onDelete, onBack }: SongViewProps) {
               <TabsContent value="lyrics" className="p-8 m-0">
                 {currentContent ? (
                   <div className="space-y-12">
-                    {/* Chorus */}
                     {currentContent.chorus && (
                       <div className="relative p-6 bg-accent/5 rounded-2xl border border-accent/10">
                         <div className="absolute -top-3 left-6 px-3 bg-white border border-accent/20 rounded-full flex items-center gap-1.5 shadow-sm">
@@ -137,7 +134,6 @@ export function SongView({ song, onEdit, onDelete, onBack }: SongViewProps) {
                       </div>
                     )}
 
-                    {/* Verses */}
                     <div className="space-y-10">
                       {currentContent.verses.map((verse, index) => (
                         <div key={index} className="relative">
@@ -174,7 +170,7 @@ export function SongView({ song, onEdit, onDelete, onBack }: SongViewProps) {
                     />
                   </div>
                   <Button variant="outline" asChild>
-                    <a href={song.partitionUrl} download={`Partition_${song.number}`} target="_blank" rel="noopener noreferrer">
+                    <a href={song.partitionUrl} download={`Partition_${currentContent?.number || 'Song'}`} target="_blank" rel="noopener noreferrer">
                       View Full Size
                     </a>
                   </Button>

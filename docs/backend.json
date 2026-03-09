@@ -1,31 +1,18 @@
-
 {
   "entities": {
     "Song": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Song",
       "type": "object",
-      "description": "Represents a musical song or hymn, supporting bilingual content in English and French.",
+      "description": "Represents a musical song or hymn with language-specific metadata and content.",
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique identifier for the Song entity, must match the document ID."
-        },
-        "number": {
-          "type": "string",
-          "description": "The identifying number assigned to the song (e.g., '001')."
-        },
-        "author": {
-          "type": "string",
-          "description": "The creator or writer of the song."
-        },
-        "year": {
-          "type": "string",
-          "description": "The year the song was composed or published."
+          "description": "Unique identifier for the Song entity."
         },
         "content": {
           "type": "object",
-          "description": "Bilingual lyrics and title content.",
+          "description": "Bilingual lyrics and metadata.",
           "properties": {
             "en": { "$ref": "#/definitions/SongContent" },
             "fr": { "$ref": "#/definitions/SongContent" }
@@ -42,8 +29,6 @@
       },
       "required": [
         "id",
-        "number",
-        "author",
         "content"
       ],
       "definitions": {
@@ -51,20 +36,22 @@
           "type": "object",
           "properties": {
             "title": { "type": "string" },
+            "number": { "type": "string" },
+            "author": { "type": "string" },
+            "year": { "type": "string" },
             "verses": {
               "type": "array",
               "items": { "type": "string" }
             },
             "chorus": { "type": "string" }
           },
-          "required": ["title", "verses"]
+          "required": ["title", "number", "verses"]
         }
       }
     }
   },
   "auth": {
     "providers": [
-      "password",
       "anonymous"
     ]
   },
@@ -73,7 +60,7 @@
       "schema": {
         "$ref": "#/backend/entities/Song"
       },
-      "description": "Collection of all musical songs or hymns. Document ID {songId} must match the 'id' field in the document data."
+      "description": "Collection of all musical songs or hymns."
     }
   }
 }

@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -18,6 +17,9 @@ interface SongFormProps {
 
 const emptyContent = (): SongContent => ({
   title: "",
+  number: "",
+  author: "",
+  year: "",
   verses: [""],
   chorus: "",
 });
@@ -25,9 +27,6 @@ const emptyContent = (): SongContent => ({
 export function SongForm({ song, onSave, onCancel }: SongFormProps) {
   const [formData, setFormData] = React.useState<NewSong | Song>(
     song || {
-      number: "",
-      author: "",
-      year: "",
       content: {
         en: emptyContent(),
         fr: emptyContent(),
@@ -39,7 +38,18 @@ export function SongForm({ song, onSave, onCancel }: SongFormProps) {
 
   const [activeLang, setActiveLang] = React.useState<"en" | "fr">("en");
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, field: 'partitionUrl' | 'audioUrl') => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData((prev) => ({ ...prev, [field]: reader.result as string }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
@@ -50,22 +60,11 @@ export function SongForm({ song, onSave, onCancel }: SongFormProps) {
       content: {
         ...prev.content,
         [lang]: {
-          ...prev.content[lang],
+          ...(prev.content[lang] || emptyContent()),
           [field]: value,
         },
       },
     }));
-  };
-
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, field: 'partitionUrl' | 'audioUrl') => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFormData((prev) => ({ ...prev, [field]: reader.result as string }));
-      };
-      reader.readAsDataURL(file);
-    }
   };
 
   const handleVerseChange = (lang: "en" | "fr", index: number, value: string) => {
@@ -87,7 +86,6 @@ export function SongForm({ song, onSave, onCancel }: SongFormProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Validate that at least one title is provided
     const enTitle = formData.content.en?.title;
     const frTitle = formData.content.fr?.title;
     if (!enTitle && !frTitle) {
@@ -101,13 +99,43 @@ export function SongForm({ song, onSave, onCancel }: SongFormProps) {
     const content = formData.content[lang] || emptyContent();
     return (
       <div className="space-y-6 animate-in fade-in duration-300">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="md:col-span-2 space-y-2">
+            <Label htmlFor={`${lang}-title`}>Song Title ({lang.toUpperCase()})</Label>
+            <Input
+              id={`${lang}-title`}
+              value={content.title}
+              onChange={(e) => handleContentChange(lang, "title", e.target.value)}
+              placeholder={`Enter ${lang === 'en' ? 'English' : 'French'} title`}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor={`${lang}-number`}>Number ({lang.toUpperCase()})</Label>
+            <Input
+              id={`${lang}-number`}
+              value={content.number}
+              onChange={(e) => handleContentChange(lang, "number", e.target.value)}
+              placeholder="e.g. 001"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor={`${lang}-year`}>Year ({lang.toUpperCase()})</Label>
+            <Input
+              id={`${lang}-year`}
+              value={content.year}
+              onChange={(e) => handleContentChange(lang, "year", e.target.value)}
+              placeholder="Year"
+            />
+          </div>
+        </div>
+
         <div className="space-y-2">
-          <Label htmlFor={`${lang}-title`}>Song Title ({lang.toUpperCase()})</Label>
+          <Label htmlFor={`${lang}-author`}>Author / Composer ({lang.toUpperCase()})</Label>
           <Input
-            id={`${lang}-title`}
-            value={content.title}
-            onChange={(e) => handleContentChange(lang, "title", e.target.value)}
-            placeholder={`Enter ${lang === 'en' ? 'English' : 'French'} title`}
+            id={`${lang}-author`}
+            value={content.author}
+            onChange={(e) => handleContentChange(lang, "author", e.target.value)}
+            placeholder="Artist name"
           />
         </div>
 
@@ -168,43 +196,6 @@ export function SongForm({ song, onSave, onCancel }: SongFormProps) {
   return (
     <form onSubmit={handleSubmit} className="flex flex-col h-full">
       <div className="flex-1 p-6 space-y-8">
-        {/* Global Metadata */}
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="number">Song Number</Label>
-              <Input
-                id="number"
-                name="number"
-                value={formData.number}
-                onChange={handleChange}
-                placeholder="e.g. 001"
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="author">Author / Composer</Label>
-              <Input
-                id="author"
-                name="author"
-                value={formData.author}
-                onChange={handleChange}
-                placeholder="Artist name"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="year">Year</Label>
-              <Input
-                id="year"
-                name="year"
-                value={formData.year}
-                onChange={handleChange}
-                placeholder="Publication year"
-              />
-            </div>
-          </div>
-        </div>
-
         {/* Media Section */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-muted/30 rounded-2xl border border-primary/5">
           <div className="space-y-3">
@@ -221,7 +212,7 @@ export function SongForm({ song, onSave, onCancel }: SongFormProps) {
                 <Input
                   name="partitionUrl"
                   value={formData.partitionUrl || ""}
-                  onChange={handleChange}
+                  onChange={handleUrlChange}
                   placeholder="Image URL..."
                   className="h-8 text-xs"
                 />
@@ -251,7 +242,7 @@ export function SongForm({ song, onSave, onCancel }: SongFormProps) {
                 <Input
                   name="audioUrl"
                   value={formData.audioUrl || ""}
-                  onChange={handleChange}
+                  onChange={handleUrlChange}
                   placeholder="Audio URL..."
                   className="h-8 text-xs"
                 />
@@ -268,16 +259,16 @@ export function SongForm({ song, onSave, onCancel }: SongFormProps) {
           </div>
         </div>
 
-        {/* Lyrics Translation Tabs */}
+        {/* Lyrics & Metadata Tabs */}
         <div className="space-y-4">
           <div className="flex items-center gap-2 mb-2">
             <Languages className="w-5 h-5 text-primary" />
-            <Label className="text-lg font-headline">Lyrics & Translations</Label>
+            <Label className="text-lg font-headline">Bilingual Content & Metadata</Label>
           </div>
           <Tabs value={activeLang} onValueChange={(val) => setActiveLang(val as "en" | "fr")} className="w-full">
             <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="en">English Content</TabsTrigger>
-              <TabsTrigger value="fr">French Content</TabsTrigger>
+              <TabsTrigger value="en">English (EN)</TabsTrigger>
+              <TabsTrigger value="fr">French (FR)</TabsTrigger>
             </TabsList>
             <TabsContent value="en" className="mt-6">
               {renderLyricInputs("en")}

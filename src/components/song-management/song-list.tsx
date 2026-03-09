@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -6,7 +5,7 @@ import { Search, Edit, Trash2, Music } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Song, getDisplayTitle } from "@/lib/types";
+import { Song, getDisplayTitle, getDisplayNumber, getDisplayAuthor } from "@/lib/types";
 
 interface SongListProps {
   songs: Song[];
@@ -20,17 +19,16 @@ export function SongList({ songs, onEdit, onDelete, onSelect }: SongListProps) {
 
   const filteredSongs = songs.filter((song) => {
     const searchLower = searchTerm.toLowerCase();
-    const enTitle = song.content?.en?.title?.toLowerCase() || "";
-    const frTitle = song.content?.fr?.title?.toLowerCase() || "";
-    const author = song.author?.toLowerCase() || "";
-    const number = song.number?.toLowerCase() || "";
     
-    return (
-      enTitle.includes(searchLower) ||
-      frTitle.includes(searchLower) ||
-      author.includes(searchLower) ||
-      number.includes(searchLower)
-    );
+    const en = song.content?.en;
+    const fr = song.content?.fr;
+
+    const searchableStrings = [
+      en?.title, en?.author, en?.number, en?.year,
+      fr?.title, fr?.author, fr?.number, fr?.year
+    ].filter(Boolean).map(s => s!.toLowerCase());
+    
+    return searchableStrings.some(s => s.includes(searchLower));
   });
 
   return (
@@ -58,20 +56,14 @@ export function SongList({ songs, onEdit, onDelete, onSelect }: SongListProps) {
               <CardContent className="p-4 flex items-center justify-between gap-4">
                 <div className="flex items-center gap-4 flex-1">
                   <div className="w-12 h-12 rounded-xl bg-primary/5 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-colors">
-                    <span className="font-headline font-bold text-sm">#{song.number}</span>
+                    <span className="font-headline font-bold text-sm">#{getDisplayNumber(song)}</span>
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="font-headline font-semibold text-lg truncate group-hover:text-primary transition-colors">
                       {getDisplayTitle(song)}
                     </h3>
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <span className="truncate">{song.author || "Unknown Author"}</span>
-                      {song.year && (
-                        <>
-                          <span className="text-muted-foreground/30">•</span>
-                          <span>{song.year}</span>
-                        </>
-                      )}
+                      <span className="truncate">{getDisplayAuthor(song)}</span>
                     </div>
                   </div>
                 </div>
