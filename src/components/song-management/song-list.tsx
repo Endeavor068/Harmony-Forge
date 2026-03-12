@@ -21,26 +21,40 @@ export function SongList({ songs, uiLanguage, selectedSongId, onEdit, onDelete, 
   const [searchTerm, setSearchTerm] = React.useState("");
 
   const filteredSongs = React.useMemo(() => {
-    const searchLower = searchTerm.toLowerCase();
+    const searchLower = searchTerm.trim().toLowerCase();
     
-    return songs
-      .filter((song) => {
-        if (!searchTerm) return true;
-        const en = song.content?.en;
-        const fr = song.content?.fr;
+    // Sort logic for consistent ordering
+    const sorted = [...songs].sort((a, b) => {
+      const numA = parseInt(getDisplayNumber(a, uiLanguage).replace(/\D/g, '')) || 0;
+      const numB = parseInt(getDisplayNumber(b, uiLanguage).replace(/\D/g, '')) || 0;
+      return numA - numB;
+    });
 
-        const searchableStrings = [
-          en?.title, en?.author, en?.number, en?.year,
-          fr?.title, fr?.author, fr?.number, fr?.year
-        ].filter(Boolean).map(s => s!.toLowerCase());
-        
-        return searchableStrings.some(s => s.includes(searchLower));
-      })
-      .sort((a, b) => {
-        const numA = parseInt(getDisplayNumber(a, uiLanguage).replace(/\D/g, '')) || 0;
-        const numB = parseInt(getDisplayNumber(b, uiLanguage).replace(/\D/g, '')) || 0;
-        return numA - numB;
-      });
+    if (!searchLower) return sorted;
+
+    const numericSearch = searchLower.replace('#', '');
+
+    return sorted.filter((song) => {
+      const en = song.content?.en;
+      const fr = song.content?.fr;
+
+      // Check numbers (exact match or partial)
+      const matchesNumber = 
+        en?.number?.toLowerCase().includes(numericSearch) || 
+        fr?.number?.toLowerCase().includes(numericSearch) ||
+        en?.number?.toLowerCase() === numericSearch ||
+        fr?.number?.toLowerCase() === numericSearch;
+
+      // Check other metadata
+      const searchableStrings = [
+        en?.title, en?.author, en?.year,
+        fr?.title, fr?.author, fr?.year
+      ].filter(Boolean).map(s => s!.toLowerCase());
+      
+      const matchesText = searchableStrings.some(s => s.includes(searchLower));
+
+      return matchesNumber || matchesText;
+    });
   }, [songs, searchTerm, uiLanguage]);
 
   return (
@@ -50,7 +64,7 @@ export function SongList({ songs, uiLanguage, selectedSongId, onEdit, onDelete, 
           <Search className="w-4 h-4" />
         </div>
         <Input
-          placeholder={`Search ${uiLanguage === 'en' ? 'English & French' : 'Anglais & Français'}...`}
+          placeholder={uiLanguage === 'en' ? "Search by title, number, or author..." : "Rechercher par titre, numéro ou auteur..."}
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="pl-10 pr-10 h-12 bg-white/50 backdrop-blur-sm border-primary/10 focus:border-primary/30 transition-all rounded-xl"
