@@ -21,37 +21,37 @@ export function SongList({ songs, uiLanguage, selectedSongId, onEdit, onDelete, 
   const [searchTerm, setSearchTerm] = React.useState("");
 
   const filteredSongs = React.useMemo(() => {
-    const searchLower = searchTerm.trim().toLowerCase();
+    const searchTrimmed = searchTerm.trim().toLowerCase();
     
-    // Sort logic for consistent ordering
+    // Sort logic for consistent ordering (Numeric)
     const sorted = [...songs].sort((a, b) => {
       const numA = parseInt(getDisplayNumber(a, uiLanguage).replace(/\D/g, '')) || 0;
       const numB = parseInt(getDisplayNumber(b, uiLanguage).replace(/\D/g, '')) || 0;
       return numA - numB;
     });
 
-    if (!searchLower) return sorted;
+    if (!searchTrimmed) return sorted;
 
-    const numericSearch = searchLower.replace('#', '');
+    // Strip '#' symbols to allow users to search for "199" even if it's stored as "199" 
+    // or if they type "#199" searching against plain strings.
+    const numericPart = searchTrimmed.replace(/#/g, '');
 
     return sorted.filter((song) => {
       const en = song.content?.en;
       const fr = song.content?.fr;
 
-      // Check numbers (exact match or partial)
+      // 1. Check if the search term matches the song number (in either language)
       const matchesNumber = 
-        en?.number?.toLowerCase().includes(numericSearch) || 
-        fr?.number?.toLowerCase().includes(numericSearch) ||
-        en?.number?.toLowerCase() === numericSearch ||
-        fr?.number?.toLowerCase() === numericSearch;
+        (en?.number && en.number.toLowerCase().includes(numericPart)) ||
+        (fr?.number && fr.number.toLowerCase().includes(numericPart));
 
-      // Check other metadata
+      // 2. Check if the search term matches other metadata
       const searchableStrings = [
         en?.title, en?.author, en?.year,
         fr?.title, fr?.author, fr?.year
       ].filter(Boolean).map(s => s!.toLowerCase());
       
-      const matchesText = searchableStrings.some(s => s.includes(searchLower));
+      const matchesText = searchableStrings.some(s => s.includes(searchTrimmed));
 
       return matchesNumber || matchesText;
     });
@@ -64,7 +64,7 @@ export function SongList({ songs, uiLanguage, selectedSongId, onEdit, onDelete, 
           <Search className="w-4 h-4" />
         </div>
         <Input
-          placeholder={uiLanguage === 'en' ? "Search by title, number, or author..." : "Rechercher par titre, numéro ou auteur..."}
+          placeholder={uiLanguage === 'en' ? "Search by number, title, or author..." : "Rechercher par numéro, titre ou auteur..."}
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="pl-10 pr-10 h-12 bg-white/50 backdrop-blur-sm border-primary/10 focus:border-primary/30 transition-all rounded-xl"
