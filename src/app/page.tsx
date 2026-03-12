@@ -328,7 +328,7 @@ export default function HarmonyForge() {
             </div>
 
             {/* Action Area Section - Right (Sticky) */}
-            <div className="lg:col-span-7 lg:sticky lg:top-24">
+            <div className="lg:col-span-7 lg:sticky lg:top-24 self-start pb-12">
               {view === "list" && (
                 <div className="hidden lg:flex h-[70vh] items-center justify-center bg-white/20 border-2 border-dashed border-primary/10 rounded-3xl animate-in fade-in zoom-in duration-700">
                   <div className="text-center space-y-4 max-w-xs">

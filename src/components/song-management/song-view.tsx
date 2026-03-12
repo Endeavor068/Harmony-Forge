@@ -118,7 +118,7 @@ export function SongView({ song, onEdit, onDelete, onBack }: SongViewProps) {
               </div>
             </div>
 
-            <ScrollArea className="h-[65vh]">
+            <ScrollArea className="h-[calc(100vh-350px)] min-h-[400px]">
               <TabsContent value="lyrics" className="p-8 m-0">
                 {!hasContent ? (
                   <div className="flex flex-col items-center justify-center py-12">
@@ -132,7 +132,7 @@ export function SongView({ song, onEdit, onDelete, onBack }: SongViewProps) {
                     </Alert>
                   </div>
                 ) : (
-                  <div className="space-y-12">
+                  <div className="space-y-12 pb-12">
                     {currentContent?.chorus && (
                       <div className="relative p-6 bg-accent/5 rounded-2xl border border-accent/10">
                         <div className="absolute -top-3 left-6 px-3 bg-white border border-accent/20 rounded-full flex items-center gap-1.5 shadow-sm">
@@ -167,7 +167,7 @@ export function SongView({ song, onEdit, onDelete, onBack }: SongViewProps) {
               </TabsContent>
 
               <TabsContent value="partition" className="p-8 m-0">
-                <div className="flex flex-col items-center gap-4">
+                <div className="flex flex-col items-center gap-4 pb-12">
                   <div className="relative w-full aspect-[1/1.4] bg-muted/20 rounded-lg overflow-hidden border">
                     <Image
                       src={song.partitionUrl || ""}
