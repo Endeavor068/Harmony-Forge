@@ -43,14 +43,14 @@ export function SongView({ song, uiLanguage, onEdit, onDelete, onBack }: SongVie
   const hasFr = !!(song.content?.fr?.title?.trim() || song.content?.fr?.verses?.some(v => v.trim().length > 0));
 
   return (
-    <div className="max-w-4xl mx-auto space-y-4 animate-in fade-in slide-in-from-right-4 duration-500">
-      <Button variant="ghost" size="sm" className="mb-1" onClick={onBack}>
+    <div className="max-w-4xl mx-auto h-full flex flex-col space-y-4 animate-in fade-in slide-in-from-right-4 duration-500">
+      <Button variant="ghost" size="sm" className="shrink-0 mb-1 self-start" onClick={onBack}>
         <ChevronLeft className="w-4 h-4 mr-2" />
         Back to List
       </Button>
 
-      <Card className="border-primary/10 shadow-xl bg-white overflow-hidden flex flex-col">
-        <CardHeader className="bg-primary/5 pb-6">
+      <Card className="border-primary/10 shadow-xl bg-white overflow-hidden flex-1 flex flex-col min-h-0">
+        <CardHeader className="bg-primary/5 pb-6 shrink-0">
           <div className="flex justify-between items-start gap-4">
             <div className="space-y-2">
               <div className="flex items-center gap-3">
@@ -84,7 +84,7 @@ export function SongView({ song, uiLanguage, onEdit, onDelete, onBack }: SongVie
             </div>
           </div>
         </CardHeader>
-        <CardContent className="p-0 flex-1">
+        <CardContent className="p-0 flex-1 min-h-0 overflow-hidden">
           <Tabs defaultValue="lyrics" className="w-full h-full flex flex-col">
             <div className="px-8 py-3 border-b bg-muted/5 flex items-center justify-between shrink-0">
               <TabsList className="bg-transparent h-10 gap-6 p-0">
@@ -144,8 +144,8 @@ export function SongView({ song, uiLanguage, onEdit, onDelete, onBack }: SongVie
               </div>
             </div>
 
-            <ScrollArea className="flex-1 h-[calc(100vh-420px)] min-h-[300px]">
-              <TabsContent value="lyrics" className="p-8 m-0">
+            <ScrollArea className="flex-1 min-h-0">
+              <TabsContent value="lyrics" className="p-8 m-0 pb-20">
                 {!hasContent ? (
                   <div className="flex flex-col items-center justify-center py-20 animate-in fade-in zoom-in duration-300">
                     <Alert className="max-w-md bg-muted/20 border-primary/10">
@@ -194,8 +194,8 @@ export function SongView({ song, uiLanguage, onEdit, onDelete, onBack }: SongVie
                 )}
               </TabsContent>
 
-              <TabsContent value="partition" className="p-8 m-0">
-                <div className="flex flex-col items-center gap-4 pb-20">
+              <TabsContent value="partition" className="p-8 m-0 pb-20">
+                <div className="flex flex-col items-center gap-4">
                   <div className="relative w-full aspect-[1/1.4] bg-muted/20 rounded-lg overflow-hidden border">
                     <Image
                       src={song.partitionUrl || ""}
@@ -213,8 +213,8 @@ export function SongView({ song, uiLanguage, onEdit, onDelete, onBack }: SongVie
                 </div>
               </TabsContent>
 
-              <TabsContent value="audio" className="p-8 m-0">
-                <div className="flex flex-col items-center justify-center h-full py-20 gap-8 pb-32">
+              <TabsContent value="audio" className="p-8 m-0 pb-20">
+                <div className="flex flex-col items-center justify-center py-20 gap-8">
                   <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center animate-pulse">
                     <Volume2 className="w-12 h-12 text-primary" />
                   </div>

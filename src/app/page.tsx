@@ -324,9 +324,9 @@ export default function HarmonyForge() {
               />
             </div>
 
-            <div className="lg:col-span-7 lg:sticky lg:top-24 self-start pb-20">
+            <div className="lg:col-span-7 lg:sticky lg:top-24 self-start h-[calc(100vh-8rem)]">
               {view === "list" && (
-                <div className="hidden lg:flex h-[70vh] items-center justify-center bg-white/20 border-2 border-dashed border-primary/10 rounded-3xl animate-in fade-in zoom-in duration-700">
+                <div className="hidden lg:flex h-full items-center justify-center bg-white/20 border-2 border-dashed border-primary/10 rounded-3xl animate-in fade-in zoom-in duration-700">
                   <div className="text-center space-y-4 max-w-xs">
                     <div className="w-20 h-20 bg-primary/5 rounded-full flex items-center justify-center mx-auto mb-6">
                       <Music2 className="w-10 h-10 text-primary/30" />
