@@ -33,10 +33,16 @@ export function SongView({ song, uiLanguage, onEdit, onDelete, onBack }: SongVie
   }, [uiLanguage]);
 
   const currentContent = song.content?.[lyricsLang];
-  const hasContent = !!(currentContent?.title || currentContent?.verses?.length);
   
-  const hasEn = !!(song.content?.en?.title || song.content?.en?.verses?.length);
-  const hasFr = !!(song.content?.fr?.title || song.content?.fr?.verses?.length);
+  // Refined content check: verify that title, chorus, or at least one verse contains non-whitespace text
+  const hasContent = !!(
+    currentContent?.title?.trim() || 
+    currentContent?.chorus?.trim() || 
+    currentContent?.verses?.some(v => v.trim().length > 0)
+  );
+  
+  const hasEn = !!(song.content?.en?.title?.trim() || song.content?.en?.verses?.some(v => v.trim().length > 0));
+  const hasFr = !!(song.content?.fr?.title?.trim() || song.content?.fr?.verses?.some(v => v.trim().length > 0));
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
@@ -155,7 +161,7 @@ export function SongView({ song, uiLanguage, onEdit, onDelete, onBack }: SongVie
                   </div>
                 ) : (
                   <div className="space-y-12 pb-12">
-                    {currentContent?.chorus && (
+                    {currentContent?.chorus?.trim() && (
                       <div className="relative p-6 bg-accent/5 rounded-2xl border border-accent/10">
                         <div className="absolute -top-3 left-6 px-3 bg-white border border-accent/20 rounded-full flex items-center gap-1.5 shadow-sm">
                           <Music className="w-3 h-3 text-accent" />
@@ -170,19 +176,21 @@ export function SongView({ song, uiLanguage, onEdit, onDelete, onBack }: SongVie
                     )}
 
                     <div className="space-y-10">
-                      {currentContent?.verses.map((verse, index) => (
-                        <div key={index} className="relative">
-                          <span className="absolute -top-6 left-0 text-[10px] font-bold text-primary/40 uppercase tracking-widest">
-                            Verse {index + 1} ({lyricsLang.toUpperCase()})
-                          </span>
-                          <p className="text-lg leading-relaxed text-foreground whitespace-pre-wrap font-body">
-                            {verse}
-                          </p>
-                          {index < currentContent.verses.length - 1 && (
-                            <Separator className="mt-8 opacity-50 w-24" />
-                          )}
-                        </div>
-                      ))}
+                      {currentContent?.verses
+                        ?.filter(v => v.trim().length > 0)
+                        .map((verse, index) => (
+                          <div key={index} className="relative">
+                            <span className="absolute -top-6 left-0 text-[10px] font-bold text-primary/40 uppercase tracking-widest">
+                              Verse {index + 1} ({lyricsLang.toUpperCase()})
+                            </span>
+                            <p className="text-lg leading-relaxed text-foreground whitespace-pre-wrap font-body">
+                              {verse}
+                            </p>
+                            {index < currentContent.verses.filter(v => v.trim().length > 0).length - 1 && (
+                              <Separator className="mt-8 opacity-50 w-24" />
+                            )}
+                          </div>
+                        ))}
                     </div>
                   </div>
                 )}
