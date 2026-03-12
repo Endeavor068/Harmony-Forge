@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Plus, Music2, Loader2, Download, FileJson, FileSpreadsheet, Upload, Languages } from "lucide-react";
+import { Plus, Music2, Loader2, Download, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SongList } from "@/components/song-management/song-list";
 import { SongForm } from "@/components/song-management/song-form";
@@ -15,7 +15,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { 
   useCollection, 
@@ -346,6 +345,7 @@ export default function HarmonyForge() {
               {view === "details" && selectedSong && (
                 <SongView
                   song={selectedSong}
+                  uiLanguage={uiLanguage}
                   onEdit={handleEdit}
                   onDelete={handleDeleteClick}
                   onBack={() => {

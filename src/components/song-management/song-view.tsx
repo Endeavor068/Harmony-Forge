@@ -3,28 +3,40 @@
 import * as React from "react";
 import { Song, getDisplayTitle } from "@/lib/types";
 import { Button } from "@/components/ui/button";
-import { Edit, Trash2, ChevronLeft, Calendar, User, Music, FileImage, Volume2, Languages, AlertCircle } from "lucide-react";
+import { Edit, Trash2, ChevronLeft, Calendar, User, Music, FileImage, Volume2, Languages } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { cn } from "@/lib/utils";
 import Image from "next/image";
 
 interface SongViewProps {
   song: Song;
+  uiLanguage?: 'en' | 'fr';
   onEdit: (song: Song) => void;
   onDelete: (song: Song) => void;
   onBack: () => void;
 }
 
-export function SongView({ song, onEdit, onDelete, onBack }: SongViewProps) {
+export function SongView({ song, uiLanguage, onEdit, onDelete, onBack }: SongViewProps) {
   const [lyricsLang, setLyricsLang] = React.useState<"en" | "fr">(
-    song.content?.en?.title ? "en" : "fr"
+    uiLanguage || (song.content?.en?.title ? "en" : "fr")
   );
+
+  // Keep local lyrics language in sync with global UI language if it changes
+  React.useEffect(() => {
+    if (uiLanguage) {
+      setLyricsLang(uiLanguage);
+    }
+  }, [uiLanguage]);
 
   const currentContent = song.content?.[lyricsLang];
   const hasContent = !!(currentContent?.title || currentContent?.verses?.length);
+  
+  const hasEn = !!(song.content?.en?.title || song.content?.en?.verses?.length);
+  const hasFr = !!(song.content?.fr?.title || song.content?.fr?.verses?.length);
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
@@ -104,13 +116,23 @@ export function SongView({ song, onEdit, onDelete, onBack }: SongViewProps) {
                 <div className="flex bg-muted rounded-lg p-0.5">
                   <button
                     onClick={() => setLyricsLang("en")}
-                    className={`px-3 py-1 text-[10px] font-bold uppercase rounded-md transition-all ${lyricsLang === 'en' ? 'bg-white shadow-sm text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+                    title={!hasEn ? "No English content available" : ""}
+                    className={cn(
+                      "px-3 py-1 text-[10px] font-bold uppercase rounded-md transition-all",
+                      lyricsLang === 'en' ? 'bg-white shadow-sm text-primary' : 'text-muted-foreground hover:text-foreground',
+                      !hasEn && "opacity-50"
+                    )}
                   >
                     EN
                   </button>
                   <button
                     onClick={() => setLyricsLang("fr")}
-                    className={`px-3 py-1 text-[10px] font-bold uppercase rounded-md transition-all ${lyricsLang === 'fr' ? 'bg-white shadow-sm text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+                    title={!hasFr ? "Pas de contenu en français" : ""}
+                    className={cn(
+                      "px-3 py-1 text-[10px] font-bold uppercase rounded-md transition-all",
+                      lyricsLang === 'fr' ? 'bg-white shadow-sm text-primary' : 'text-muted-foreground hover:text-foreground',
+                      !hasFr && "opacity-50"
+                    )}
                   >
                     FR
                   </button>
@@ -118,16 +140,16 @@ export function SongView({ song, onEdit, onDelete, onBack }: SongViewProps) {
               </div>
             </div>
 
-            <ScrollArea className="h-[calc(100vh-350px)] min-h-[400px]">
+            <ScrollArea className="h-[calc(100vh-280px)] min-h-[400px]">
               <TabsContent value="lyrics" className="p-8 m-0">
                 {!hasContent ? (
-                  <div className="flex flex-col items-center justify-center py-12">
-                    <Alert variant="destructive" className="max-w-md bg-destructive/5 border-destructive/20">
-                      <AlertCircle className="h-4 w-4" />
-                      <AlertTitle>Lyrics Unavailable</AlertTitle>
-                      <AlertDescription>
+                  <div className="flex flex-col items-center justify-center py-20 animate-in fade-in zoom-in duration-300">
+                    <Alert className="max-w-md bg-muted/20 border-primary/10">
+                      <Languages className="h-4 w-4 text-primary" />
+                      <AlertTitle className="font-headline font-semibold text-primary">Content Not Found</AlertTitle>
+                      <AlertDescription className="text-muted-foreground">
                         This hymn does not currently have lyrics available in <strong>{lyricsLang === 'en' ? 'English' : 'French'}</strong>. 
-                        Please try switching to the other language using the toggle above.
+                        Please switch to the other language using the toggle or edit the song to add a translation.
                       </AlertDescription>
                     </Alert>
                   </div>
