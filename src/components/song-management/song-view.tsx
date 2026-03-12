@@ -25,7 +25,6 @@ export function SongView({ song, uiLanguage, onEdit, onDelete, onBack }: SongVie
     uiLanguage || (song.content?.en?.title ? "en" : "fr")
   );
 
-  // Keep local lyrics language in sync with global UI language if it changes
   React.useEffect(() => {
     if (uiLanguage) {
       setLyricsLang(uiLanguage);
@@ -34,7 +33,6 @@ export function SongView({ song, uiLanguage, onEdit, onDelete, onBack }: SongVie
 
   const currentContent = song.content?.[lyricsLang];
   
-  // Refined content check: verify that title, chorus, or at least one verse contains non-whitespace text
   const hasContent = !!(
     currentContent?.title?.trim() || 
     currentContent?.chorus?.trim() || 
@@ -45,14 +43,14 @@ export function SongView({ song, uiLanguage, onEdit, onDelete, onBack }: SongVie
   const hasFr = !!(song.content?.fr?.title?.trim() || song.content?.fr?.verses?.some(v => v.trim().length > 0));
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
-      <Button variant="ghost" className="mb-2" onClick={onBack}>
+    <div className="max-w-4xl mx-auto space-y-4 animate-in fade-in slide-in-from-right-4 duration-500">
+      <Button variant="ghost" size="sm" className="mb-1" onClick={onBack}>
         <ChevronLeft className="w-4 h-4 mr-2" />
         Back to List
       </Button>
 
-      <Card className="border-primary/10 shadow-xl bg-white overflow-hidden">
-        <CardHeader className="bg-primary/5 pb-8">
+      <Card className="border-primary/10 shadow-xl bg-white overflow-hidden flex flex-col">
+        <CardHeader className="bg-primary/5 pb-6">
           <div className="flex justify-between items-start gap-4">
             <div className="space-y-2">
               <div className="flex items-center gap-3">
@@ -60,10 +58,10 @@ export function SongView({ song, uiLanguage, onEdit, onDelete, onBack }: SongVie
                   #{currentContent?.number || song.content?.en?.number || song.content?.fr?.number || "???"}
                 </span>
               </div>
-              <CardTitle className="text-4xl font-headline font-bold text-primary leading-tight">
+              <CardTitle className="text-3xl font-headline font-bold text-primary leading-tight">
                 {currentContent?.title || getDisplayTitle(song)}
               </CardTitle>
-              <div className="flex flex-wrap gap-4 pt-2">
+              <div className="flex flex-wrap gap-4 pt-1">
                 <div className="flex items-center text-muted-foreground text-sm">
                   <User className="w-4 h-4 mr-1.5" />
                   {currentContent?.author || "Anonymous"}
@@ -86,13 +84,13 @@ export function SongView({ song, uiLanguage, onEdit, onDelete, onBack }: SongVie
             </div>
           </div>
         </CardHeader>
-        <CardContent className="p-0">
-          <Tabs defaultValue="lyrics" className="w-full">
-            <div className="px-8 pt-4 border-b bg-muted/5 flex items-center justify-between">
-              <TabsList className="bg-transparent h-12 gap-6 p-0">
+        <CardContent className="p-0 flex-1">
+          <Tabs defaultValue="lyrics" className="w-full h-full flex flex-col">
+            <div className="px-8 py-3 border-b bg-muted/5 flex items-center justify-between shrink-0">
+              <TabsList className="bg-transparent h-10 gap-6 p-0">
                 <TabsTrigger 
                   value="lyrics" 
-                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none font-headline font-semibold"
+                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none font-headline font-semibold px-1"
                 >
                   <Music className="w-4 h-4 mr-2" />
                   Lyrics
@@ -100,7 +98,7 @@ export function SongView({ song, uiLanguage, onEdit, onDelete, onBack }: SongVie
                 {song.partitionUrl && (
                   <TabsTrigger 
                     value="partition" 
-                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none font-headline font-semibold"
+                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none font-headline font-semibold px-1"
                   >
                     <FileImage className="w-4 h-4 mr-2" />
                     Partition
@@ -109,7 +107,7 @@ export function SongView({ song, uiLanguage, onEdit, onDelete, onBack }: SongVie
                 {song.audioUrl && (
                   <TabsTrigger 
                     value="audio" 
-                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none font-headline font-semibold"
+                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none font-headline font-semibold px-1"
                   >
                     <Volume2 className="w-4 h-4 mr-2" />
                     Audio
@@ -117,7 +115,7 @@ export function SongView({ song, uiLanguage, onEdit, onDelete, onBack }: SongVie
                 )}
               </TabsList>
 
-              <div className="flex items-center gap-2 pb-2">
+              <div className="flex items-center gap-2">
                 <Languages className="w-3.5 h-3.5 text-muted-foreground" />
                 <div className="flex bg-muted rounded-lg p-0.5">
                   <button
@@ -146,7 +144,7 @@ export function SongView({ song, uiLanguage, onEdit, onDelete, onBack }: SongVie
               </div>
             </div>
 
-            <ScrollArea className="h-[calc(100vh-280px)] min-h-[400px]">
+            <ScrollArea className="flex-1 h-[calc(100vh-420px)] min-h-[300px]">
               <TabsContent value="lyrics" className="p-8 m-0">
                 {!hasContent ? (
                   <div className="flex flex-col items-center justify-center py-20 animate-in fade-in zoom-in duration-300">
@@ -160,7 +158,7 @@ export function SongView({ song, uiLanguage, onEdit, onDelete, onBack }: SongVie
                     </Alert>
                   </div>
                 ) : (
-                  <div className="space-y-12 pb-12">
+                  <div className="space-y-12 pb-20">
                     {currentContent?.chorus?.trim() && (
                       <div className="relative p-6 bg-accent/5 rounded-2xl border border-accent/10">
                         <div className="absolute -top-3 left-6 px-3 bg-white border border-accent/20 rounded-full flex items-center gap-1.5 shadow-sm">
@@ -197,7 +195,7 @@ export function SongView({ song, uiLanguage, onEdit, onDelete, onBack }: SongVie
               </TabsContent>
 
               <TabsContent value="partition" className="p-8 m-0">
-                <div className="flex flex-col items-center gap-4 pb-12">
+                <div className="flex flex-col items-center gap-4 pb-20">
                   <div className="relative w-full aspect-[1/1.4] bg-muted/20 rounded-lg overflow-hidden border">
                     <Image
                       src={song.partitionUrl || ""}
@@ -216,7 +214,7 @@ export function SongView({ song, uiLanguage, onEdit, onDelete, onBack }: SongVie
               </TabsContent>
 
               <TabsContent value="audio" className="p-8 m-0">
-                <div className="flex flex-col items-center justify-center h-full py-20 gap-8">
+                <div className="flex flex-col items-center justify-center h-full py-20 gap-8 pb-32">
                   <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center animate-pulse">
                     <Volume2 className="w-12 h-12 text-primary" />
                   </div>

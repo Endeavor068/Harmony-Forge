@@ -45,14 +45,12 @@ export default function HarmonyForge() {
   const jsonInputRef = React.useRef<HTMLInputElement>(null);
   const csvInputRef = React.useRef<HTMLInputElement>(null);
 
-  // Ensure user is signed in anonymously to satisfy security rules
   React.useEffect(() => {
     if (!isUserLoading && !user && auth) {
       initiateAnonymousSignIn(auth);
     }
   }, [user, isUserLoading, auth]);
 
-  // Real-time subscription to the 'songs' collection
   const songsQuery = useMemoFirebase(() => {
     if (!db) return null;
     return collection(db, "songs");
@@ -238,7 +236,7 @@ export default function HarmonyForge() {
       <input type="file" accept=".json" ref={jsonInputRef} onChange={handleImportJSON} className="hidden" />
       <input type="file" accept=".csv" ref={csvInputRef} onChange={handleImportCSV} className="hidden" />
 
-      <header className="sticky top-0 z-20 bg-white/70 backdrop-blur-md border-b border-primary/10 px-6 py-4">
+      <header className="sticky top-0 z-50 bg-white/70 backdrop-blur-md border-b border-primary/10 px-6 py-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-6">
             <div className="flex items-center gap-3">
@@ -309,7 +307,6 @@ export default function HarmonyForge() {
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
-            {/* List Section - Left */}
             <div className={`${view === 'details' ? 'hidden lg:block' : 'block'} lg:col-span-5`}>
               <div className="mb-6 flex items-center justify-between">
                 <h2 className="text-xl font-headline font-semibold text-primary/80">Collection</h2>
@@ -327,8 +324,7 @@ export default function HarmonyForge() {
               />
             </div>
 
-            {/* Action Area Section - Right (Sticky) */}
-            <div className="lg:col-span-7 lg:sticky lg:top-24 self-start pb-12">
+            <div className="lg:col-span-7 lg:sticky lg:top-24 self-start pb-20">
               {view === "list" && (
                 <div className="hidden lg:flex h-[70vh] items-center justify-center bg-white/20 border-2 border-dashed border-primary/10 rounded-3xl animate-in fade-in zoom-in duration-700">
                   <div className="text-center space-y-4 max-w-xs">
