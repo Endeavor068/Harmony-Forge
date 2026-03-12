@@ -320,6 +320,7 @@ export default function HarmonyForge() {
               <SongList
                 songs={songs || []}
                 uiLanguage={uiLanguage}
+                selectedSongId={selectedSong?.id}
                 onEdit={handleEdit}
                 onDelete={handleDeleteClick}
                 onSelect={handleSelect}

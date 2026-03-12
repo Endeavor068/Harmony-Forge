@@ -6,16 +6,18 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Song, getDisplayTitle, getDisplayNumber, getDisplayAuthor } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
 interface SongListProps {
   songs: Song[];
   uiLanguage: 'en' | 'fr';
+  selectedSongId?: string;
   onEdit: (song: Song) => void;
   onDelete: (song: Song) => void;
   onSelect: (song: Song) => void;
 }
 
-export function SongList({ songs, uiLanguage, onEdit, onDelete, onSelect }: SongListProps) {
+export function SongList({ songs, uiLanguage, selectedSongId, onEdit, onDelete, onSelect }: SongListProps) {
   const [searchTerm, setSearchTerm] = React.useState("");
 
   const filteredSongs = React.useMemo(() => {
@@ -65,54 +67,70 @@ export function SongList({ songs, uiLanguage, onEdit, onDelete, onSelect }: Song
 
       <div className="grid gap-4">
         {filteredSongs.length > 0 ? (
-          filteredSongs.map((song) => (
-            <Card
-              key={song.id}
-              className="group border-transparent hover:border-accent/20 bg-white/40 hover:bg-white shadow-sm hover:shadow-md transition-all cursor-pointer overflow-hidden animate-in fade-in slide-in-from-bottom-2"
-              onClick={() => onSelect(song)}
-            >
-              <CardContent className="p-4 flex items-center justify-between gap-4">
-                <div className="flex items-center gap-4 flex-1">
-                  <div className="w-12 h-12 rounded-xl bg-primary/5 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-colors">
-                    <span className="font-headline font-bold text-sm">#{getDisplayNumber(song, uiLanguage)}</span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-headline font-semibold text-lg truncate group-hover:text-primary transition-colors">
-                      {getDisplayTitle(song, uiLanguage)}
-                    </h3>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <span className="truncate">{getDisplayAuthor(song, uiLanguage)}</span>
+          filteredSongs.map((song) => {
+            const isSelected = song.id === selectedSongId;
+            return (
+              <Card
+                key={song.id}
+                className={cn(
+                  "group transition-all cursor-pointer overflow-hidden animate-in fade-in slide-in-from-bottom-2",
+                  "border-transparent hover:border-accent/20 bg-white/40 hover:bg-white shadow-sm hover:shadow-md",
+                  isSelected && "border-primary bg-primary/5 shadow-md ring-1 ring-primary/20"
+                )}
+                onClick={() => onSelect(song)}
+              >
+                <CardContent className="p-4 flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-4 flex-1">
+                    <div className={cn(
+                      "w-12 h-12 rounded-xl flex items-center justify-center transition-colors",
+                      isSelected ? "bg-primary text-white" : "bg-primary/5 text-primary group-hover:bg-primary group-hover:text-white"
+                    )}>
+                      <span className="font-headline font-bold text-sm">#{getDisplayNumber(song, uiLanguage)}</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className={cn(
+                        "font-headline font-semibold text-lg truncate transition-colors",
+                        isSelected ? "text-primary" : "group-hover:text-primary"
+                      )}>
+                        {getDisplayTitle(song, uiLanguage)}
+                      </h3>
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <span className="truncate">{getDisplayAuthor(song, uiLanguage)}</span>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-9 w-9 text-accent hover:bg-accent/10"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onEdit(song);
-                    }}
-                  >
-                    <Edit className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-9 w-9 text-destructive hover:bg-destructive/10"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onDelete(song);
-                    }}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))
+                  <div className={cn(
+                    "flex items-center gap-1 transition-opacity",
+                    isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                  )}>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-9 w-9 text-accent hover:bg-accent/10"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onEdit(song);
+                      }}
+                    >
+                      <Edit className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-9 w-9 text-destructive hover:bg-destructive/10"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDelete(song);
+                      }}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })
         ) : (
           <div className="text-center py-20 bg-white/30 rounded-3xl border-2 border-dashed border-primary/10">
             <Music className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
