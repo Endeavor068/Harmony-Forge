@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Search, Edit, Trash2, Music } from "lucide-react";
+import { Search, Edit, Trash2, Music, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -9,27 +9,37 @@ import { Song, getDisplayTitle, getDisplayNumber, getDisplayAuthor } from "@/lib
 
 interface SongListProps {
   songs: Song[];
+  uiLanguage: 'en' | 'fr';
   onEdit: (song: Song) => void;
   onDelete: (song: Song) => void;
   onSelect: (song: Song) => void;
 }
 
-export function SongList({ songs, onEdit, onDelete, onSelect }: SongListProps) {
+export function SongList({ songs, uiLanguage, onEdit, onDelete, onSelect }: SongListProps) {
   const [searchTerm, setSearchTerm] = React.useState("");
 
-  const filteredSongs = songs.filter((song) => {
+  const filteredSongs = React.useMemo(() => {
     const searchLower = searchTerm.toLowerCase();
     
-    const en = song.content?.en;
-    const fr = song.content?.fr;
+    return songs
+      .filter((song) => {
+        if (!searchTerm) return true;
+        const en = song.content?.en;
+        const fr = song.content?.fr;
 
-    const searchableStrings = [
-      en?.title, en?.author, en?.number, en?.year,
-      fr?.title, fr?.author, fr?.number, fr?.year
-    ].filter(Boolean).map(s => s!.toLowerCase());
-    
-    return searchableStrings.some(s => s.includes(searchLower));
-  });
+        const searchableStrings = [
+          en?.title, en?.author, en?.number, en?.year,
+          fr?.title, fr?.author, fr?.number, fr?.year
+        ].filter(Boolean).map(s => s!.toLowerCase());
+        
+        return searchableStrings.some(s => s.includes(searchLower));
+      })
+      .sort((a, b) => {
+        const numA = parseInt(getDisplayNumber(a, uiLanguage).replace(/\D/g, '')) || 0;
+        const numB = parseInt(getDisplayNumber(b, uiLanguage).replace(/\D/g, '')) || 0;
+        return numA - numB;
+      });
+  }, [songs, searchTerm, uiLanguage]);
 
   return (
     <div className="space-y-6">
@@ -38,11 +48,19 @@ export function SongList({ songs, onEdit, onDelete, onSelect }: SongListProps) {
           <Search className="w-4 h-4" />
         </div>
         <Input
-          placeholder="Search by title, author, or number..."
+          placeholder={`Search ${uiLanguage === 'en' ? 'English & French' : 'Anglais & Français'}...`}
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="pl-10 h-12 bg-white/50 backdrop-blur-sm border-primary/10 focus:border-primary/30 transition-all rounded-xl"
+          className="pl-10 pr-10 h-12 bg-white/50 backdrop-blur-sm border-primary/10 focus:border-primary/30 transition-all rounded-xl"
         />
+        {searchTerm && (
+          <button
+            onClick={() => setSearchTerm("")}
+            className="absolute inset-y-0 right-3 flex items-center text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        )}
       </div>
 
       <div className="grid gap-4">
@@ -56,14 +74,14 @@ export function SongList({ songs, onEdit, onDelete, onSelect }: SongListProps) {
               <CardContent className="p-4 flex items-center justify-between gap-4">
                 <div className="flex items-center gap-4 flex-1">
                   <div className="w-12 h-12 rounded-xl bg-primary/5 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-colors">
-                    <span className="font-headline font-bold text-sm">#{getDisplayNumber(song)}</span>
+                    <span className="font-headline font-bold text-sm">#{getDisplayNumber(song, uiLanguage)}</span>
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="font-headline font-semibold text-lg truncate group-hover:text-primary transition-colors">
-                      {getDisplayTitle(song)}
+                      {getDisplayTitle(song, uiLanguage)}
                     </h3>
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <span className="truncate">{getDisplayAuthor(song)}</span>
+                      <span className="truncate">{getDisplayAuthor(song, uiLanguage)}</span>
                     </div>
                   </div>
                 </div>

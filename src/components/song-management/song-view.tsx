@@ -3,11 +3,12 @@
 import * as React from "react";
 import { Song, getDisplayTitle } from "@/lib/types";
 import { Button } from "@/components/ui/button";
-import { Edit, Trash2, ChevronLeft, Calendar, User, Music, FileImage, Volume2, Languages } from "lucide-react";
+import { Edit, Trash2, ChevronLeft, Calendar, User, Music, FileImage, Volume2, Languages, AlertCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import Image from "next/image";
 
 interface SongViewProps {
@@ -23,6 +24,7 @@ export function SongView({ song, onEdit, onDelete, onBack }: SongViewProps) {
   );
 
   const currentContent = song.content?.[lyricsLang];
+  const hasContent = !!(currentContent?.title || currentContent?.verses?.length);
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
@@ -37,7 +39,7 @@ export function SongView({ song, onEdit, onDelete, onBack }: SongViewProps) {
             <div className="space-y-2">
               <div className="flex items-center gap-3">
                 <span className="px-3 py-1 rounded-full bg-primary text-white text-xs font-bold font-headline">
-                  #{currentContent?.number || "???"}
+                  #{currentContent?.number || song.content?.en?.number || song.content?.fr?.number || "???"}
                 </span>
               </div>
               <CardTitle className="text-4xl font-headline font-bold text-primary leading-tight">
@@ -118,9 +120,20 @@ export function SongView({ song, onEdit, onDelete, onBack }: SongViewProps) {
 
             <ScrollArea className="h-[65vh]">
               <TabsContent value="lyrics" className="p-8 m-0">
-                {currentContent ? (
+                {!hasContent ? (
+                  <div className="flex flex-col items-center justify-center py-12">
+                    <Alert variant="destructive" className="max-w-md bg-destructive/5 border-destructive/20">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertTitle>Lyrics Unavailable</AlertTitle>
+                      <AlertDescription>
+                        This hymn does not currently have lyrics available in <strong>{lyricsLang === 'en' ? 'English' : 'French'}</strong>. 
+                        Please try switching to the other language using the toggle above.
+                      </AlertDescription>
+                    </Alert>
+                  </div>
+                ) : (
                   <div className="space-y-12">
-                    {currentContent.chorus && (
+                    {currentContent?.chorus && (
                       <div className="relative p-6 bg-accent/5 rounded-2xl border border-accent/10">
                         <div className="absolute -top-3 left-6 px-3 bg-white border border-accent/20 rounded-full flex items-center gap-1.5 shadow-sm">
                           <Music className="w-3 h-3 text-accent" />
@@ -135,7 +148,7 @@ export function SongView({ song, onEdit, onDelete, onBack }: SongViewProps) {
                     )}
 
                     <div className="space-y-10">
-                      {currentContent.verses.map((verse, index) => (
+                      {currentContent?.verses.map((verse, index) => (
                         <div key={index} className="relative">
                           <span className="absolute -top-6 left-0 text-[10px] font-bold text-primary/40 uppercase tracking-widest">
                             Verse {index + 1} ({lyricsLang.toUpperCase()})
@@ -149,11 +162,6 @@ export function SongView({ song, onEdit, onDelete, onBack }: SongViewProps) {
                         </div>
                       ))}
                     </div>
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
-                    <Languages className="w-12 h-12 mb-4 opacity-20" />
-                    <p>No content available in {lyricsLang === 'en' ? 'English' : 'French'}.</p>
                   </div>
                 )}
               </TabsContent>
