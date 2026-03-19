@@ -7,27 +7,6 @@ service cloud.firestore {
      * This ruleset implements a Community-Managed Content model. The application functions as a 
      * shared digital hymnal where the barrier to contribution is authentication rather than 
      * individual ownership.
-     *
-     * DATA STRUCTURE:
-     * The data is organized into a flat, top-level collection: `/songs/{songId}`. This 
-     * structure facilitates global discovery and easy "Query As Proof" (QAP) operations 
-     * for all authenticated users.
-     *
-     * KEY SECURITY DECISIONS:
-     * 1. Authenticated Access Only: To prevent spam and unauthorized data scraping, all 
-     *    read and write operations require a valid Firebase Authentication token (including 
-     *    anonymous auth).
-     * 2. Community Ownership: The security posture assumes a collaborative environment. 
-     *    Any authenticated user can create, edit, or delete songs. There is no strict 
-     *    "Owner-Only" restriction on updates.
-     * 3. Identity Consistency: While data types are flexible for prototyping, the rules 
-     *    enforce that the 'id' field within a Song document remains consistent with the 
-     *    document's path ID.
-     *
-     * DE-NORMALIZATION FOR AUTHORIZATION:
-     * Because this is a shared community collection, no complex denormalization of 
-     * roles or ownership IDs is required to determine access. Authentication status 
-     * is the sole gatekeeper.
      */
 
     // --- Helper Functions ---
@@ -36,28 +15,7 @@ service cloud.firestore {
      * @description Checks if the request is made by an authenticated user.
      */
     function isSignedIn() {
-      return request.auth != null;
-    }
-
-    /**
-     * @description Verifies the existence of a document and authentication status for state-changing operations.
-     */
-    function canModifyExisting() {
-      return isSignedIn() && resource != null;
-    }
-
-    /**
-     * @description Validates that the document's internal ID matches the path ID during creation.
-     */
-    function isValidId(songId) {
-      return request.resource.data.id == songId;
-    }
-
-    /**
-     * @description Ensures the internal ID of the document is not changed during an update.
-     */
-    function isIdImmutable() {
-      return request.resource.data.id == resource.data.id;
+      return request.auth != null && request.auth.uid != null;
     }
 
     // --- Collection Rules ---
@@ -65,17 +23,13 @@ service cloud.firestore {
     /**
      * @description Rules for the shared Song collection.
      * @path /songs/{songId}
-     * @allow (get/list) If user is signed in.
-     * @allow (create) If user is signed in and provides a matching internal 'id'.
-     * @allow (update/delete) If user is signed in and the document exists.
-     * @deny (all) If the user is unauthenticated.
-     * @principle Authenticated-only shared access with relational integrity for document IDs.
+     * @allow (read/write) If user is signed in.
      */
     match /songs/{songId} {
-      allow get, list: if isSignedIn();
-      allow create: if isSignedIn() && isValidId(songId);
-      allow update: if canModifyExisting() && isIdImmutable();
-      allow delete: if canModifyExisting();
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.id == songId;
+      allow update: if isSignedIn() && resource != null && request.resource.data.id == resource.data.id;
+      allow delete: if isSignedIn() && resource != null;
     }
 
   }

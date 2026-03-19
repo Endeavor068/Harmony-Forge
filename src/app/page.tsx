@@ -54,9 +54,9 @@ export default function HarmonyForge() {
   // Delay the query until both the database and the authenticated user are ready
   // to prevent "Missing or insufficient permissions" errors on the initial load.
   const songsQuery = useMemoFirebase(() => {
-    if (!db || !user) return null;
+    if (!db || !user?.uid) return null;
     return collection(db, "songs");
-  }, [db, user]);
+  }, [db, user?.uid]);
 
   const { data: songs, isLoading: isSongsLoading } = useCollection<Song>(songsQuery);
 
