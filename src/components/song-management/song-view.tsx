@@ -1,9 +1,10 @@
+
 "use client";
 
 import * as React from "react";
 import { Song, getDisplayTitle } from "@/lib/types";
 import { Button } from "@/components/ui/button";
-import { Edit, Trash2, ChevronLeft, Calendar, User, Music, FileImage, Volume2, Languages } from "lucide-react";
+import { Edit, Trash2, ChevronLeft, Calendar, User, Music, FileImage, Volume2, Languages, Key } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
@@ -43,7 +44,7 @@ export function SongView({ song, uiLanguage, onEdit, onDelete, onBack }: SongVie
   const hasFr = !!(song.content?.fr?.title?.trim() || song.content?.fr?.verses?.some(v => v.trim().length > 0));
 
   return (
-    <div className="max-w-4xl mx-auto h-full flex flex-col space-y-4 animate-in fade-in slide-in-from-right-4 duration-500">
+    <div className="max-w-4xl mx-auto h-[calc(100vh-10rem)] flex flex-col space-y-4 animate-in fade-in slide-in-from-right-4 duration-500">
       <Button variant="ghost" size="sm" className="shrink-0 mb-1 self-start" onClick={onBack}>
         <ChevronLeft className="w-4 h-4 mr-2" />
         Back to List
@@ -57,6 +58,12 @@ export function SongView({ song, uiLanguage, onEdit, onDelete, onBack }: SongVie
                 <span className="px-3 py-1 rounded-full bg-primary text-white text-xs font-bold font-headline">
                   #{currentContent?.number || song.content?.en?.number || song.content?.fr?.number || "???"}
                 </span>
+                {currentContent?.key && (
+                  <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-accent/20 text-accent-foreground text-[10px] font-bold uppercase tracking-wider">
+                    <Key className="w-3 h-3" />
+                    Key: {currentContent.key}
+                  </span>
+                )}
               </div>
               <CardTitle className="text-3xl font-headline font-bold text-primary leading-tight">
                 {currentContent?.title || getDisplayTitle(song)}

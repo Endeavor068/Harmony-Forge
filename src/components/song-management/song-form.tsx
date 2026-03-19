@@ -1,7 +1,8 @@
+
 "use client";
 
 import * as React from "react";
-import { Plus, Trash2, Save, X, Music, FileImage, Volume2, Languages } from "lucide-react";
+import { Plus, Trash2, Save, X, Music, FileImage, Volume2, Languages, Key } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,6 +21,7 @@ const emptyContent = (): SongContent => ({
   number: "",
   author: "",
   year: "",
+  key: "",
   verses: [""],
   chorus: "",
 });
@@ -129,14 +131,29 @@ export function SongForm({ song, onSave, onCancel }: SongFormProps) {
           </div>
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor={`${lang}-author`}>Author / Composer ({lang.toUpperCase()})</Label>
-          <Input
-            id={`${lang}-author`}
-            value={content.author}
-            onChange={(e) => handleContentChange(lang, "author", e.target.value)}
-            placeholder="Artist name"
-          />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor={`${lang}-author`}>Author / Composer ({lang.toUpperCase()})</Label>
+            <Input
+              id={`${lang}-author`}
+              value={content.author}
+              onChange={(e) => handleContentChange(lang, "author", e.target.value)}
+              placeholder="Artist name"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor={`${lang}-key`}>Musical Key ({lang.toUpperCase()})</Label>
+            <div className="relative">
+              <Key className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                id={`${lang}-key`}
+                value={content.key || ""}
+                onChange={(e) => handleContentChange(lang, "key", e.target.value)}
+                placeholder="e.g. G Major"
+                className="pl-9"
+              />
+            </div>
+          </div>
         </div>
 
         <div className="space-y-2 p-4 bg-accent/5 rounded-xl border border-accent/10">

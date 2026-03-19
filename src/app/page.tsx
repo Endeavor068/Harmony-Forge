@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -136,8 +137,8 @@ export default function HarmonyForge() {
     if (!songs) return;
     const headers = [
       "ID",
-      "EN_Number", "EN_Title", "EN_Author", "EN_Year",
-      "FR_Number", "FR_Title", "FR_Author", "FR_Year",
+      "EN_Number", "EN_Title", "EN_Author", "EN_Year", "EN_Key",
+      "FR_Number", "FR_Title", "FR_Author", "FR_Year", "FR_Key",
       "PartitionURL", "AudioURL"
     ];
     
@@ -147,10 +148,12 @@ export default function HarmonyForge() {
       s.content?.en?.title || "",
       s.content?.en?.author || "",
       s.content?.en?.year || "",
+      s.content?.en?.key || "",
       s.content?.fr?.number || "",
       s.content?.fr?.title || "",
       s.content?.fr?.author || "",
       s.content?.fr?.year || "",
+      s.content?.fr?.key || "",
       s.partitionUrl || "",
       s.audioUrl || ""
     ].map(val => `"${String(val).replace(/"/g, '""')}"`).join(","));
@@ -205,15 +208,15 @@ export default function HarmonyForge() {
         let count = 0;
         for (let i = 1; i < lines.length; i++) {
           const parts = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-          if (parts.length >= 11) {
+          if (parts.length >= 13) {
             const clean = (s: string) => s?.trim().replace(/^"|"$/g, '').replace(/""/g, '"') || "";
-            const [id, enNum, enTitle, enAuthor, enYear, frNum, frTitle, frAuthor, frYear, pUrl, aUrl] = parts.map(clean);
+            const [id, enNum, enTitle, enAuthor, enYear, enKey, frNum, frTitle, frAuthor, frYear, frKey, pUrl, aUrl] = parts.map(clean);
             const songId = id || Math.random().toString(36).substring(2, 11);
             const song: Song = {
               id: songId,
               content: {
-                en: { number: enNum, title: enTitle, author: enAuthor, year: enYear, verses: [], chorus: "" },
-                fr: { number: frNum, title: frTitle, author: frAuthor, year: frYear, verses: [], chorus: "" },
+                en: { number: enNum, title: enTitle, author: enAuthor, year: enYear, key: enKey, verses: [], chorus: "" },
+                fr: { number: frNum, title: frTitle, author: frAuthor, year: frYear, key: frKey, verses: [], chorus: "" },
               },
               partitionUrl: pUrl,
               audioUrl: aUrl
@@ -326,9 +329,9 @@ export default function HarmonyForge() {
               />
             </div>
 
-            <div className="lg:col-span-7 lg:sticky lg:top-24 self-start h-[calc(100vh-8rem)]">
+            <div className="lg:col-span-7 lg:sticky lg:top-24 self-start">
               {view === "list" && (
-                <div className="hidden lg:flex h-full items-center justify-center bg-white/20 border-2 border-dashed border-primary/10 rounded-3xl animate-in fade-in zoom-in duration-700">
+                <div className="hidden lg:flex h-[calc(100vh-12rem)] items-center justify-center bg-white/20 border-2 border-dashed border-primary/10 rounded-3xl animate-in fade-in zoom-in duration-700">
                   <div className="text-center space-y-4 max-w-xs">
                     <div className="w-20 h-20 bg-primary/5 rounded-full flex items-center justify-center mx-auto mb-6">
                       <Music2 className="w-10 h-10 text-primary/30" />

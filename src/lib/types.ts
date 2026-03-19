@@ -1,8 +1,10 @@
+
 export interface SongContent {
   title: string;
   number: string;
   author: string;
   year: string;
+  key?: string;
   verses: string[];
   chorus?: string;
 }
