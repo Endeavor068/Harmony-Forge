@@ -58,25 +58,25 @@ export function SongView({ song, uiLanguage, onEdit, onDelete, onBack }: SongVie
                 <span className="px-3 py-1 rounded-full bg-primary text-white text-xs font-bold font-headline">
                   #{currentContent?.number || song.content?.en?.number || song.content?.fr?.number || "???"}
                 </span>
-                {currentContent?.key && (
-                  <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-accent/20 text-accent-foreground text-[10px] font-bold uppercase tracking-wider">
-                    <Key className="w-3 h-3" />
-                    Key: {currentContent.key}
-                  </span>
-                )}
               </div>
               <CardTitle className="text-3xl font-headline font-bold text-primary leading-tight">
                 {currentContent?.title || getDisplayTitle(song)}
               </CardTitle>
               <div className="flex flex-wrap gap-4 pt-1">
                 <div className="flex items-center text-muted-foreground text-sm">
-                  <User className="w-4 h-4 mr-1.5" />
+                  <User className="w-4 h-4 mr-1.5 text-primary/40" />
                   {currentContent?.author || "Anonymous"}
                 </div>
                 {currentContent?.year && (
                   <div className="flex items-center text-muted-foreground text-sm">
-                    <Calendar className="w-4 h-4 mr-1.5" />
+                    <Calendar className="w-4 h-4 mr-1.5 text-primary/40" />
                     {currentContent.year}
+                  </div>
+                )}
+                {currentContent?.key && (
+                  <div className="flex items-center text-muted-foreground text-sm">
+                    <Key className="w-4 h-4 mr-1.5 text-accent" />
+                    <span className="font-semibold">{currentContent.key}</span>
                   </div>
                 )}
               </div>
