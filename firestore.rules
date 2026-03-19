@@ -3,34 +3,21 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * CORE PHILOSOPHY:
-     * This ruleset implements a Community-Managed Content model. The application functions as a 
-     * shared digital hymnal where the barrier to contribution is authentication rather than 
-     * individual ownership.
-     */
-
-    // --- Helper Functions ---
-
-    /**
-     * @description Checks if the request is made by an authenticated user.
+     * Helper to verify authentication.
      */
     function isSignedIn() {
       return request.auth != null && request.auth.uid != null;
     }
 
-    // --- Collection Rules ---
-
     /**
-     * @description Rules for the shared Song collection.
-     * @path /songs/{songId}
-     * @allow (read/write) If user is signed in.
+     * Rules for the shared Song collection.
+     * In this community model, any authenticated user can read and contribute.
      */
     match /songs/{songId} {
       allow read: if isSignedIn();
       allow create: if isSignedIn() && request.resource.data.id == songId;
-      allow update: if isSignedIn() && resource != null && request.resource.data.id == resource.data.id;
-      allow delete: if isSignedIn() && resource != null;
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
     }
-
   }
 }
