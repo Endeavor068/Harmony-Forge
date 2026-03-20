@@ -1,14 +1,16 @@
-
 "use client";
 
 import * as React from "react";
-import { Plus, Trash2, Save, X, Music, FileImage, Volume2, Languages, Key } from "lucide-react";
+import { Plus, Trash2, Save, X, Music, FileImage, Volume2, Languages, Key, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Song, NewSong, SongContent } from "@/lib/types";
+import { useStorage } from "@/firebase";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { useToast } from "@/hooks/use-toast";
 
 interface SongFormProps {
   song?: Song | null;
@@ -27,6 +29,10 @@ const emptyContent = (): SongContent => ({
 });
 
 export function SongForm({ song, onSave, onCancel }: SongFormProps) {
+  const storage = useStorage();
+  const { toast } = useToast();
+  const [isUploading, setIsUploading] = React.useState(false);
+  
   const [formData, setFormData] = React.useState<NewSong | Song>(
     song || {
       content: {
@@ -40,14 +46,36 @@ export function SongForm({ song, onSave, onCancel }: SongFormProps) {
 
   const [activeLang, setActiveLang] = React.useState<"en" | "fr">("en");
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, field: 'partitionUrl' | 'audioUrl') => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: 'partitionUrl' | 'audioUrl') => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFormData((prev) => ({ ...prev, [field]: reader.result as string }));
-      };
-      reader.readAsDataURL(file);
+    if (!file || !storage) return;
+
+    setIsUploading(true);
+    try {
+      // Create a unique path for the file
+      const fileExtension = file.name.split('.').pop();
+      const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExtension}`;
+      const folder = field === 'partitionUrl' ? 'partitions' : 'audio';
+      const storageRef = ref(storage, `songs/${folder}/${fileName}`);
+      
+      const snapshot = await uploadBytes(storageRef, file);
+      const downloadUrl = await getDownloadURL(snapshot.ref);
+      
+      setFormData((prev) => ({ ...prev, [field]: downloadUrl }));
+      
+      toast({
+        title: "Upload Successful",
+        description: `${file.name} has been uploaded and linked.`,
+      });
+    } catch (error) {
+      console.error("Upload error:", error);
+      toast({
+        variant: "destructive",
+        title: "Upload Failed",
+        description: "There was an error uploading your file. Please try again.",
+      });
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -91,7 +119,11 @@ export function SongForm({ song, onSave, onCancel }: SongFormProps) {
     const enTitle = formData.content.en?.title;
     const frTitle = formData.content.fr?.title;
     if (!enTitle && !frTitle) {
-      alert("Please provide at least one title (English or French)");
+      toast({
+        variant: "destructive",
+        title: "Missing Title",
+        description: "Please provide at least one title (English or French)",
+      });
       return;
     }
     onSave(formData);
@@ -235,14 +267,27 @@ export function SongForm({ song, onSave, onCancel }: SongFormProps) {
                 />
               </TabsContent>
               <TabsContent value="upload" className="mt-2">
-                <Input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => handleFileUpload(e, 'partitionUrl')}
-                  className="h-8 text-xs cursor-pointer"
-                />
+                <div className="relative">
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    disabled={isUploading}
+                    onChange={(e) => handleFileUpload(e, 'partitionUrl')}
+                    className="h-8 text-xs cursor-pointer"
+                  />
+                  {isUploading && (
+                    <div className="absolute inset-y-0 right-2 flex items-center">
+                      <Loader2 className="w-3 h-3 animate-spin text-primary" />
+                    </div>
+                  )}
+                </div>
               </TabsContent>
             </Tabs>
+            {formData.partitionUrl && (
+              <p className="text-[10px] text-muted-foreground truncate">
+                Linked: {formData.partitionUrl}
+              </p>
+            )}
           </div>
 
           <div className="space-y-3">
@@ -265,14 +310,27 @@ export function SongForm({ song, onSave, onCancel }: SongFormProps) {
                 />
               </TabsContent>
               <TabsContent value="upload" className="mt-2">
-                <Input
-                  type="file"
-                  accept="audio/*"
-                  onChange={(e) => handleFileUpload(e, 'audioUrl')}
-                  className="h-8 text-xs cursor-pointer"
-                />
+                <div className="relative">
+                  <Input
+                    type="file"
+                    accept="audio/*"
+                    disabled={isUploading}
+                    onChange={(e) => handleFileUpload(e, 'audioUrl')}
+                    className="h-8 text-xs cursor-pointer"
+                  />
+                  {isUploading && (
+                    <div className="absolute inset-y-0 right-2 flex items-center">
+                      <Loader2 className="w-3 h-3 animate-spin text-primary" />
+                    </div>
+                  )}
+                </div>
               </TabsContent>
             </Tabs>
+            {formData.audioUrl && (
+              <p className="text-[10px] text-muted-foreground truncate">
+                Linked: {formData.audioUrl}
+              </p>
+            )}
           </div>
         </div>
 
@@ -298,12 +356,20 @@ export function SongForm({ song, onSave, onCancel }: SongFormProps) {
       </div>
 
       <div className="sticky bottom-0 bg-white border-t p-6 flex justify-end gap-3 z-10">
-        <Button type="button" variant="ghost" onClick={onCancel}>
+        <Button type="button" variant="ghost" onClick={onCancel} disabled={isUploading}>
           <X className="w-4 h-4 mr-2" />
           Cancel
         </Button>
-        <Button type="submit" className="bg-accent hover:bg-accent/90 text-accent-foreground min-w-[120px]">
-          <Save className="w-4 h-4 mr-2" />
+        <Button 
+          type="submit" 
+          disabled={isUploading}
+          className="bg-accent hover:bg-accent/90 text-accent-foreground min-w-[120px]"
+        >
+          {isUploading ? (
+            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+          ) : (
+            <Save className="w-4 h-4 mr-2" />
+          )}
           {song ? "Update Song" : "Save Song"}
         </Button>
       </div>
