@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Song, NewSong, SongContent } from "@/lib/types";
-import { useStorage } from "@/firebase";
+import { useStorage, useUser } from "@/firebase";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { useToast } from "@/hooks/use-toast";
 
@@ -30,6 +30,7 @@ const emptyContent = (): SongContent => ({
 
 export function SongForm({ song, onSave, onCancel }: SongFormProps) {
   const storage = useStorage();
+  const { user, isUserLoading } = useUser();
   const { toast } = useToast();
   const [isUploading, setIsUploading] = React.useState(false);
   
@@ -48,11 +49,28 @@ export function SongForm({ song, onSave, onCancel }: SongFormProps) {
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: 'partitionUrl' | 'audioUrl') => {
     const file = e.target.files?.[0];
-    if (!file || !storage) return;
+    if (!file) return;
+
+    if (!user) {
+      toast({
+        variant: "destructive",
+        title: "Authentication Required",
+        description: "Please wait for anonymous sign-in to complete before uploading files.",
+      });
+      return;
+    }
+
+    if (!storage) {
+      toast({
+        variant: "destructive",
+        title: "Storage Error",
+        description: "Firebase Storage is not initialized.",
+      });
+      return;
+    }
 
     setIsUploading(true);
     try {
-      // Create a unique path for the file
       const fileExtension = file.name.split('.').pop();
       const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExtension}`;
       const folder = field === 'partitionUrl' ? 'partitions' : 'audio';
@@ -65,14 +83,14 @@ export function SongForm({ song, onSave, onCancel }: SongFormProps) {
       
       toast({
         title: "Upload Successful",
-        description: `${file.name} has been uploaded and linked.`,
+        description: `${file.name} has been uploaded.`,
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Upload error:", error);
       toast({
         variant: "destructive",
         title: "Upload Failed",
-        description: "There was an error uploading your file. Please try again.",
+        description: error.message || "There was an error uploading your file.",
       });
     } finally {
       setIsUploading(false);
@@ -271,11 +289,11 @@ export function SongForm({ song, onSave, onCancel }: SongFormProps) {
                   <Input
                     type="file"
                     accept="image/*"
-                    disabled={isUploading}
+                    disabled={isUploading || isUserLoading || !user}
                     onChange={(e) => handleFileUpload(e, 'partitionUrl')}
                     className="h-8 text-xs cursor-pointer"
                   />
-                  {isUploading && (
+                  {(isUploading || isUserLoading) && (
                     <div className="absolute inset-y-0 right-2 flex items-center">
                       <Loader2 className="w-3 h-3 animate-spin text-primary" />
                     </div>
@@ -314,11 +332,11 @@ export function SongForm({ song, onSave, onCancel }: SongFormProps) {
                   <Input
                     type="file"
                     accept="audio/*"
-                    disabled={isUploading}
+                    disabled={isUploading || isUserLoading || !user}
                     onChange={(e) => handleFileUpload(e, 'audioUrl')}
                     className="h-8 text-xs cursor-pointer"
                   />
-                  {isUploading && (
+                  {(isUploading || isUserLoading) && (
                     <div className="absolute inset-y-0 right-2 flex items-center">
                       <Loader2 className="w-3 h-3 animate-spin text-primary" />
                     </div>
