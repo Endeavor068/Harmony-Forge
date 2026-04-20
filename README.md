@@ -20,3 +20,29 @@ HarmonyForge is a modern, contemplative digital space designed for organizing an
 - **Data Layer:** Firebase Firestore (Real-time)
 - **Auth:** Firebase Anonymous Authentication
 - **Icons:** Lucide-React
+
+## Déploiement du front (Vercel ou Netlify)
+
+Le backend Firebase (Firestore, Auth, Storage, règles) reste sur Firebase. Le front est une app Next.js déployable sur n’importe quel hébergeur Node.
+
+### Prérequis Firebase (obligatoire pour l’auth)
+
+Après le premier déploiement, ajoutez le **domaine public** de votre site (par ex. `votre-app.vercel.app` ou `votre-site.netlify.app`) dans la console Firebase : **Authentication → Settings → Authorized domains**. Sans cela, la connexion anonyme peut échouer sur le nouveau domaine.
+
+### Vercel (recommandé pour Next.js)
+
+1. Installez la CLI : `npm i -g vercel` (ou utilisez `npx vercel`).
+2. À la racine du dépôt : `vercel` (preview) puis `vercel --prod` pour la production.
+3. Optionnel : dans le projet Vercel → **Settings → Environment Variables**, copiez les clés depuis `.env.example` si vous voulez surcharger la config Firebase sans modifier le code.
+
+Le dépôt inclut `vercel.json` (`framework: nextjs`, `npm ci`, `npm run build`).
+
+### Netlify
+
+1. Liez le dépôt dans le tableau de bord Netlify ou utilisez la CLI Netlify.
+2. Le fichier `netlify.toml` configure le plugin `@netlify/plugin-nextjs` et Node 20.
+3. Même remarque sur les **Authorized domains** Firebase et les variables `NEXT_PUBLIC_*`.
+
+### Variables d’environnement
+
+Voir `.env.example`. Si les variables ne sont pas définies, les valeurs par défaut de `src/firebase/config.ts` sont utilisées (comportement actuel).

@@ -1,4 +1,4 @@
-import type {NextConfig} from 'next';
+import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
   /* config options here */
@@ -7,9 +7,6 @@ const nextConfig: NextConfig = {
   },
   eslint: {
     ignoreDuringBuilds: true,
-  },
-  experimental: {
-    allowedDevOrigins: ['6000-firebase-studio-1773056419736.cluster-64pjnskmlbaxowh5lzq6i7v4ra.cloudworkstations.dev'],
   },
   images: {
     remotePatterns: [
