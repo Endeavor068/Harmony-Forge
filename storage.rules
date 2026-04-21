@@ -1,11 +1,10 @@
 rules_version = '2';
+// Aligné sur la console Firebase actuelle : accès ouvert (tests / debug).
+// Avant production, restreindre : allow write: if request.auth != null; (read public si besoin).
 service firebase.storage {
   match /b/{bucket}/o {
-    match /songs/{allPaths=**} {
-      // Allow any authenticated user to read and write song media.
-      // This includes users signed in anonymously.
-      allow read: if true;
-      allow write: if request.auth != null;
+    match /{allPaths=**} {
+      allow read, write: if true;
     }
   }
 }

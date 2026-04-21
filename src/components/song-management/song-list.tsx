@@ -1,12 +1,13 @@
 "use client";
 
-import * as React from "react";
-import { Search, Edit, Trash2, Music, X } from "lucide-react";
-import { Input } from "@/components/ui/input";
+import { SongMediaIndicators } from "@/components/song-management/song-media-indicators";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Song, getDisplayTitle, getDisplayNumber, getDisplayAuthor } from "@/lib/types";
+import { Input } from "@/components/ui/input";
+import { Song, getDisplayAuthor, getDisplayNumber, getDisplayTitle } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { Edit, Music, Search, Trash2, X } from "lucide-react";
+import * as React from "react";
 
 interface SongListProps {
   songs: Song[];
@@ -22,7 +23,7 @@ export function SongList({ songs, uiLanguage, selectedSongId, onEdit, onDelete, 
 
   const filteredSongs = React.useMemo(() => {
     const searchTrimmed = searchTerm.trim().toLowerCase();
-    
+
     // Sort logic for consistent ordering (Numeric)
     const sorted = [...songs].sort((a, b) => {
       const numA = parseInt(getDisplayNumber(a, uiLanguage).replace(/\D/g, '')) || 0;
@@ -41,7 +42,7 @@ export function SongList({ songs, uiLanguage, selectedSongId, onEdit, onDelete, 
       const fr = song.content?.fr;
 
       // 1. Check if the search term matches the song number (in either language)
-      const matchesNumber = 
+      const matchesNumber =
         (en?.number && en.number.toLowerCase().includes(numericPart)) ||
         (fr?.number && fr.number.toLowerCase().includes(numericPart));
 
@@ -50,7 +51,7 @@ export function SongList({ songs, uiLanguage, selectedSongId, onEdit, onDelete, 
         en?.title, en?.author, en?.year,
         fr?.title, fr?.author, fr?.year
       ].filter(Boolean).map(s => s!.toLowerCase());
-      
+
       const matchesText = searchableStrings.some(s => s.includes(searchTrimmed));
 
       return matchesNumber || matchesText;
@@ -108,8 +109,13 @@ export function SongList({ songs, uiLanguage, selectedSongId, onEdit, onDelete, 
                       )}>
                         {getDisplayTitle(song, uiLanguage)}
                       </h3>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
                         <span className="truncate">{getDisplayAuthor(song, uiLanguage)}</span>
+                        <SongMediaIndicators
+                          song={song}
+                          uiLanguage={uiLanguage}
+                          className="shrink-0"
+                        />
                       </div>
                     </div>
                   </div>

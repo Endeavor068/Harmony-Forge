@@ -1,37 +1,40 @@
 
 "use client";
 
-import * as React from "react";
-import { Plus, Music2, Loader2, Download, Upload } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { SongList } from "@/components/song-management/song-list";
-import { SongForm } from "@/components/song-management/song-form";
-import { SongView } from "@/components/song-management/song-view";
 import { DeleteConfirm } from "@/components/song-management/delete-confirm";
-import { Song, NewSong, getDisplayTitle } from "@/lib/types";
-import { useToast } from "@/hooks/use-toast";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import { SongForm } from "@/components/song-management/song-form";
+import { SongList } from "@/components/song-management/song-list";
+import { SongView } from "@/components/song-management/song-view";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { 
-  useCollection, 
-  useFirestore, 
-  useAuth, 
-  useUser, 
-  useMemoFirebase,
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import {
+  deleteDocumentNonBlocking,
+  initiateAnonymousSignIn,
   setDocumentNonBlocking,
   updateDocumentNonBlocking,
-  deleteDocumentNonBlocking,
-  initiateAnonymousSignIn
+  useAuth,
+  useCollection,
+  useFirestore,
+  useMemoFirebase,
+  useStorage,
+  useUser,
 } from "@/firebase";
+import { useToast } from "@/hooks/use-toast";
+import { deleteFirebaseStorageObjectByUrl } from "@/lib/storage-helpers";
+import { NewSong, Song, getDisplayTitle } from "@/lib/types";
 import { collection, doc } from "firebase/firestore";
+import { Download, Loader2, Music2, Plus, Upload } from "lucide-react";
+import * as React from "react";
 
 export default function HarmonyForge() {
   const db = useFirestore();
+  const storage = useStorage();
   const auth = useAuth();
   const { user, isUserLoading } = useUser();
   const { toast } = useToast();
@@ -42,7 +45,7 @@ export default function HarmonyForge() {
   const [selectedSong, setSelectedSong] = React.useState<Song | null>(null);
   const [songToDelete, setSongToDelete] = React.useState<Song | null>(null);
   const [uiLanguage, setUiLanguage] = React.useState<'en' | 'fr'>('en');
-  
+
   const jsonInputRef = React.useRef<HTMLInputElement>(null);
   const csvInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -84,12 +87,12 @@ export default function HarmonyForge() {
     if (songToDelete && db) {
       const docRef = doc(db, "songs", songToDelete.id);
       deleteDocumentNonBlocking(docRef);
-      
+
       if (selectedSong?.id === songToDelete.id) {
         setView("list");
         setSelectedSong(null);
       }
-      
+
       toast({
         title: "Song deleted",
         description: `"${getDisplayTitle(songToDelete)}" has been removed.`,
@@ -98,13 +101,53 @@ export default function HarmonyForge() {
     }
   };
 
+  const handleMediaUploaded = React.useCallback(
+    (
+      songId: string,
+      field: "partitionUrl" | "audioUrl",
+      downloadUrl: string
+    ) => {
+      if (!db) return;
+      const docRef = doc(db, "songs", songId);
+      updateDocumentNonBlocking(docRef, { [field]: downloadUrl });
+
+      setEditingSong((prev) =>
+        prev?.id === songId ? { ...prev, [field]: downloadUrl } : prev
+      );
+      setSelectedSong((prev) =>
+        prev?.id === songId ? { ...prev, [field]: downloadUrl } : prev
+      );
+    },
+    [db]
+  );
+
+  const handleSongMediaRemove = React.useCallback(
+    async (
+      songId: string,
+      field: "partitionUrl" | "audioUrl",
+      downloadUrl: string
+    ) => {
+      await deleteFirebaseStorageObjectByUrl(storage, downloadUrl);
+      if (!db) return;
+      const docRef = doc(db, "songs", songId);
+      updateDocumentNonBlocking(docRef, { [field]: "" });
+      setEditingSong((prev) =>
+        prev?.id === songId ? { ...prev, [field]: "" } : prev
+      );
+      setSelectedSong((prev) =>
+        prev?.id === songId ? { ...prev, [field]: "" } : prev
+      );
+    },
+    [db, storage]
+  );
+
   const handleSave = (songData: Song | NewSong) => {
     if (!db) return;
 
     if ("id" in songData && songData.id) {
       const docRef = doc(db, "songs", songData.id);
       updateDocumentNonBlocking(docRef, songData);
-      
+
       if (selectedSong?.id === songData.id) {
         setSelectedSong(songData as Song);
       }
@@ -113,7 +156,7 @@ export default function HarmonyForge() {
       const customId = Math.random().toString(36).substring(2, 11);
       const newSongWithId: Song = { ...songData, id: customId } as Song;
       const docRef = doc(db, "songs", customId);
-      
+
       setDocumentNonBlocking(docRef, newSongWithId, {});
       toast({ title: "Song created", description: "New song added to the collection." });
     }
@@ -141,7 +184,7 @@ export default function HarmonyForge() {
       "FR_Number", "FR_Title", "FR_Author", "FR_Year", "FR_Key",
       "PartitionURL", "AudioURL"
     ];
-    
+
     const rows = songs.map(s => [
       s.id,
       s.content?.en?.number || "",
@@ -252,7 +295,7 @@ export default function HarmonyForge() {
                 HarmonyForge
               </h1>
             </div>
-            
+
             <div className="flex bg-muted rounded-lg p-1">
               <button
                 onClick={() => setUiLanguage('en')}
@@ -268,7 +311,7 @@ export default function HarmonyForge() {
               </button>
             </div>
           </div>
-          
+
           <div className="flex items-center gap-3">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -350,6 +393,7 @@ export default function HarmonyForge() {
                   uiLanguage={uiLanguage}
                   onEdit={handleEdit}
                   onDelete={handleDeleteClick}
+                  onSongMediaRemove={handleSongMediaRemove}
                   onBack={() => {
                     setView("list");
                     setSelectedSong(null);
@@ -372,7 +416,14 @@ export default function HarmonyForge() {
             </SheetDescription>
           </SheetHeader>
           <div className="flex-1 overflow-y-auto">
-            <SongForm song={editingSong} onSave={handleSave} onCancel={() => setIsFormOpen(false)} />
+            <SongForm
+              song={editingSong}
+              onSave={handleSave}
+              onCancel={() => setIsFormOpen(false)}
+              uiLanguage={uiLanguage}
+              onMediaUploaded={handleMediaUploaded}
+              onSongMediaRemove={handleSongMediaRemove}
+            />
           </div>
         </SheetContent>
       </Sheet>

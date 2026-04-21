@@ -20,11 +20,13 @@ export function initializeFirebase() {
 }
 
 export function getSdks(firebaseApp: FirebaseApp) {
+  // Utilise le bucket par défaut de `firebaseConfig` (évite les 403 si le préfixe
+  // `gs://…firebasestorage.app` ne correspond pas au bucket réel du projet).
   return {
     firebaseApp,
     auth: getAuth(firebaseApp),
     firestore: getFirestore(firebaseApp),
-    storage: getStorage(firebaseApp)
+    storage: getStorage(firebaseApp),
   };
 }
 

@@ -25,6 +25,7 @@
     --ring: 225 60% 40%;
     --radius: 0.75rem;
   }
+
   .dark {
     --background: 225 60% 5%;
     --foreground: 220 30% 95%;
@@ -52,7 +53,17 @@
   * {
     @apply border-border;
   }
+
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* TipTap placeholder (@tiptap/extension-placeholder) */
+.lyric-editor-content .tiptap p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+  color: hsl(var(--muted-foreground));
 }

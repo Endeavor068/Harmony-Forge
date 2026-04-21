@@ -46,3 +46,11 @@ Le dépôt inclut `vercel.json` (`framework: nextjs`, `npm ci`, `npm run build`)
 ### Variables d’environnement
 
 Voir `.env.example`. Si les variables ne sont pas définies, les valeurs par défaut de `src/firebase/config.ts` sont utilisées (comportement actuel).
+
+### Firebase Storage (partitions PDF / audio MP3)
+
+Les fichiers sont envoyés vers `songs/partitions/` et `songs/audio/` avec un `contentType` explicite. Les règles du dépôt sont dans `storage.rules` (types MIME + taille max 50 Mo). Déployez-les sur votre projet :
+
+`firebase deploy --only storage`
+
+Sans ce déploiement, les uploads peuvent être refusés si les règles par défaut du bucket diffèrent.
