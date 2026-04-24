@@ -113,6 +113,7 @@ export function SongList({ songs, uiLanguage, selectedSongId, onEdit, onDelete, 
                         <span className="truncate">{getDisplayAuthor(song, uiLanguage)}</span>
                         <SongMediaIndicators
                           song={song}
+                          mediaLang={uiLanguage}
                           uiLanguage={uiLanguage}
                           className="shrink-0"
                         />

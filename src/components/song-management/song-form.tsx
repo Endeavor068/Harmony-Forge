@@ -20,14 +20,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth, useStorage, useUser } from "@/firebase";
 import { firebaseConfig } from "@/firebase/config";
 import { useToast } from "@/hooks/use-toast";
+import { normalizeSong } from "@/lib/song-normalize";
 import { deleteFirebaseStorageObjectByUrl } from "@/lib/storage-helpers";
-import {
-  NewSong,
-  Song,
-  SongContent,
-  songHasAudio,
-  songHasPartition,
-} from "@/lib/types";
+import { NewSong, Song, SongContent, contentHasAudio, contentHasPartition } from "@/lib/types";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { FileImage, Key, Languages, Loader2, Music, Plus, Save, Trash2, Volume2, X } from "lucide-react";
 import * as React from "react";
@@ -77,18 +72,17 @@ function sanitizeHymnNumberForPath(raw: string): string {
  */
 function buildStorageObjectName(
   formData: NewSong | Song,
-  preferLang: "en" | "fr",
+  mediaLang: "en" | "fr",
   field: "partitionUrl" | "audioUrl",
   ext: string
 ): string {
   const en = formData.content?.en?.number?.trim();
   const fr = formData.content?.fr?.number?.trim();
-  const primary =
-    preferLang === "en" ? en || fr || "" : fr || en || "";
+  const primary = mediaLang === "en" ? en || fr || "" : fr || en || "";
   const numberPart = sanitizeHymnNumberForPath(primary || en || fr || "unknown");
   const prefix = field === "partitionUrl" ? "partition" : "song";
   const safeExt = ext.toLowerCase().replace(/[^a-z0-9]/g, "") || "dat";
-  return `${prefix}_${numberPart}.${safeExt}`;
+  return `${prefix}_${numberPart}_${mediaLang}.${safeExt}`;
 }
 
 interface SongFormProps {
@@ -97,17 +91,18 @@ interface SongFormProps {
   onCancel: () => void;
   uiLanguage?: "en" | "fr";
   /**
-   * Après un upload Storage réussi : persiste l’URL HTTPS Firestore (`partitionUrl` / `audioUrl`).
-   * Uniquement en édition (chant déjà enregistré avec un `id`).
+   * Après un upload : URL dans `content.<lang>`. Uniquement si le chant
+   * existe déjà (id connu).
    */
   onMediaUploaded?: (
     songId: string,
+    mediaLang: "en" | "fr",
     field: "partitionUrl" | "audioUrl",
     downloadUrl: string
   ) => void;
-  /** Supprime le fichier Storage (si applicable) et vide le champ dans Firestore pour ce chant. */
   onSongMediaRemove?: (
     songId: string,
+    mediaLang: "en" | "fr",
     field: "partitionUrl" | "audioUrl",
     downloadUrl: string
   ) => Promise<void>;
@@ -121,6 +116,8 @@ const emptyContent = (): SongContent => ({
   key: "",
   verses: [""],
   chorus: "",
+  partitionUrl: "",
+  audioUrl: "",
 });
 
 export function SongForm({
@@ -137,31 +134,33 @@ export function SongForm({
   const { toast } = useToast();
   const [isUploading, setIsUploading] = React.useState(false);
 
-  const [formData, setFormData] = React.useState<NewSong | Song>(
-    song || {
-      content: {
-        en: emptyContent(),
-        fr: emptyContent(),
-      },
-      partitionUrl: "",
-      audioUrl: "",
-    }
+  const [formData, setFormData] = React.useState<NewSong | Song>(() =>
+    song
+      ? normalizeSong(song)
+      : { content: { en: emptyContent(), fr: emptyContent() } }
   );
 
   const [activeLang, setActiveLang] = React.useState<"en" | "fr">("en");
 
-  const partitionLocked = Boolean(formData.partitionUrl?.trim());
-  const audioLocked = Boolean(formData.audioUrl?.trim());
+  React.useEffect(() => {
+    if (song) setFormData(normalizeSong(song));
+    else setFormData({ content: { en: emptyContent(), fr: emptyContent() } });
+  }, [song?.id]);
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: 'partitionUrl' | 'audioUrl') => {
+  const handleFileUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+    mediaLang: "en" | "fr",
+    field: "partitionUrl" | "audioUrl"
+  ) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (field === "partitionUrl" && partitionLocked) {
+    const c = formData.content[mediaLang] || emptyContent();
+    if (field === "partitionUrl" && c.partitionUrl?.trim()) {
       e.target.value = "";
       return;
     }
-    if (field === "audioUrl" && audioLocked) {
+    if (field === "audioUrl" && c.audioUrl?.trim()) {
       e.target.value = "";
       return;
     }
@@ -223,12 +222,7 @@ export function SongForm({
             ? "pdf"
             : (file.name.split(".").pop() || "img").replace(/[^a-z0-9]/gi, "")
           : "mp3";
-      const fileName = buildStorageObjectName(
-        formData,
-        activeLang,
-        field,
-        ext
-      );
+      const fileName = buildStorageObjectName(formData, mediaLang, field, ext);
       const folder = field === "partitionUrl" ? "partitions" : "audio";
       const storageRef = ref(storage, `songs/${folder}/${fileName}`);
 
@@ -237,10 +231,19 @@ export function SongForm({
       });
       const downloadUrl = await getDownloadURL(snapshot.ref);
 
-      setFormData((prev) => ({ ...prev, [field]: downloadUrl }));
+      setFormData((prev) => ({
+        ...prev,
+        content: {
+          ...prev.content,
+          [mediaLang]: {
+            ...(prev.content[mediaLang] || emptyContent()),
+            [field]: downloadUrl,
+          },
+        },
+      }));
 
       if (song?.id) {
-        onMediaUploaded?.(song.id, field, downloadUrl);
+        onMediaUploaded?.(song.id, mediaLang, field, downloadUrl);
       }
 
       toast({
@@ -273,22 +276,31 @@ export function SongForm({
     }
   };
 
-  const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleConfirmRemoveMedia = async (field: "partitionUrl" | "audioUrl") => {
-    const url = formData[field]?.trim() ?? "";
+  const handleConfirmRemoveMedia = async (
+    mediaLang: "en" | "fr",
+    field: "partitionUrl" | "audioUrl"
+  ) => {
+    const url =
+      (formData.content[mediaLang]?.[field] as string | undefined)?.trim() ??
+      "";
     if (!url) return;
     setIsUploading(true);
     try {
       if (song?.id && onSongMediaRemove) {
-        await onSongMediaRemove(song.id, field, url);
+        await onSongMediaRemove(song.id, mediaLang, field, url);
       } else if (storage) {
         await deleteFirebaseStorageObjectByUrl(storage, url);
       }
-      setFormData((prev) => ({ ...prev, [field]: "" }));
+      setFormData((prev) => ({
+        ...prev,
+        content: {
+          ...prev.content,
+          [mediaLang]: {
+            ...(prev.content[mediaLang] || emptyContent()),
+            [field]: "",
+          },
+        },
+      }));
       toast({
         title: uiLanguage === "fr" ? "Média supprimé" : "Media removed",
         description:
@@ -416,6 +428,213 @@ export function SongForm({
           </div>
         </div>
 
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-muted/30 rounded-2xl border border-primary/5">
+          <div className="md:col-span-2 flex flex-wrap items-center justify-between gap-2">
+            <p className="text-xs font-medium text-muted-foreground">
+              {uiLanguage === "fr"
+                ? `Médias pour cette version (${lang.toUpperCase()})`
+                : `Media for this version (${lang.toUpperCase()})`}
+            </p>
+            <SongMediaFormBadges
+              hasPartition={contentHasPartition(content)}
+              hasAudio={contentHasAudio(content)}
+              uiLanguage={uiLanguage}
+            />
+          </div>
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <FileImage className="w-4 h-4 text-primary" />
+              <Label className="text-sm font-semibold text-primary/80">
+                {uiLanguage === "fr" ? "Partition (PDF ou image)" : "Sheet (PDF or image)"}
+              </Label>
+            </div>
+            {content.partitionUrl?.trim() ? (
+              <div className="rounded-lg border border-dashed border-primary/35 bg-muted/50 p-3 space-y-3">
+                <p className="text-[10px] text-muted-foreground leading-snug">
+                  {uiLanguage === "fr"
+                    ? "Une partition est déjà liée à cette version. Supprimez-la pour coller une autre URL ou en envoyer une nouvelle."
+                    : "Sheet is attached. Remove it before a new URL or upload."}
+                </p>
+                <p
+                  className="text-xs font-medium text-foreground/90 break-all"
+                  title={content.partitionUrl}
+                >
+                  {content.partitionUrl}
+                </p>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={isUploading || isUserLoading}
+                      className="h-8 text-xs text-destructive border-destructive/30 hover:bg-destructive/10"
+                    >
+                      <Trash2 className="w-3 h-3 mr-1" />
+                      {uiLanguage === "fr" ? "Supprimer la partition" : "Remove sheet"}
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>
+                        {uiLanguage === "fr" ? "Retirer la partition ?" : "Remove sheet music?"}
+                      </AlertDialogTitle>
+                      <AlertDialogDescription>
+                        {uiLanguage === "fr"
+                          ? "Le fichier sur Storage sera supprimé et le lien retiré."
+                          : "The Storage file will be deleted and the link removed."}
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>
+                        {uiLanguage === "fr" ? "Annuler" : "Cancel"}
+                      </AlertDialogCancel>
+                      <AlertDialogAction
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        onClick={() => handleConfirmRemoveMedia(lang, "partitionUrl")}
+                      >
+                        {uiLanguage === "fr" ? "Supprimer" : "Remove"}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            ) : (
+              <Tabs defaultValue="url" className="w-full">
+                <TabsList className="grid w-full grid-cols-2 h-8">
+                  <TabsTrigger value="url" className="text-xs">
+                    URL
+                  </TabsTrigger>
+                  <TabsTrigger value="upload" className="text-xs">
+                    Upload
+                  </TabsTrigger>
+                </TabsList>
+                <TabsContent value="url" className="mt-2">
+                  <Input
+                    value={content.partitionUrl || ""}
+                    onChange={(e) =>
+                      handleContentChange(lang, "partitionUrl", e.target.value)
+                    }
+                    placeholder="URL PDF ou image…"
+                    className="h-8 text-xs"
+                  />
+                </TabsContent>
+                <TabsContent value="upload" className="mt-2 space-y-1">
+                  <p className="text-[10px] text-muted-foreground">PDF, PNG, JPEG, GIF, WebP.</p>
+                  <div className="relative">
+                    <Input
+                      type="file"
+                      accept={PARTITION_ACCEPT}
+                      disabled={isUploading || isUserLoading || !user}
+                      onChange={(e) => handleFileUpload(e, lang, "partitionUrl")}
+                      className="h-8 text-xs cursor-pointer"
+                    />
+                    {(isUploading || isUserLoading) && (
+                      <div className="absolute inset-y-0 right-2 flex items-center">
+                        <Loader2 className="w-3 h-3 animate-spin text-primary" />
+                      </div>
+                    )}
+                  </div>
+                </TabsContent>
+              </Tabs>
+            )}
+          </div>
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <Volume2 className="w-4 h-4 text-primary" />
+              <Label className="text-sm font-semibold text-primary/80">Audio MP3</Label>
+            </div>
+            {content.audioUrl?.trim() ? (
+              <div className="rounded-lg border border-dashed border-primary/35 bg-muted/50 p-3 space-y-3">
+                <p className="text-[10px] text-muted-foreground leading-snug">
+                  {uiLanguage === "fr"
+                    ? "Un audio est lié à cette version. Supprimez-le pour une nouvelle URL ou upload."
+                    : "Audio is attached. Remove it before a new URL or upload."}
+                </p>
+                <p
+                  className="text-xs font-medium text-foreground/90 break-all"
+                  title={content.audioUrl}
+                >
+                  {content.audioUrl}
+                </p>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={isUploading || isUserLoading}
+                      className="h-8 text-xs text-destructive border-destructive/30 hover:bg-destructive/10"
+                    >
+                      <Trash2 className="w-3 h-3 mr-1" />
+                      {uiLanguage === "fr" ? "Supprimer l’audio" : "Remove audio"}
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>
+                        {uiLanguage === "fr" ? "Retirer l’audio ?" : "Remove audio?"}
+                      </AlertDialogTitle>
+                      <AlertDialogDescription>
+                        {uiLanguage === "fr"
+                          ? "Le fichier sur Storage sera supprimé et le lien retiré."
+                          : "The Storage file will be deleted and the link removed."}
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>
+                        {uiLanguage === "fr" ? "Annuler" : "Cancel"}
+                      </AlertDialogCancel>
+                      <AlertDialogAction
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        onClick={() => handleConfirmRemoveMedia(lang, "audioUrl")}
+                      >
+                        {uiLanguage === "fr" ? "Supprimer" : "Remove"}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            ) : (
+              <Tabs defaultValue="url" className="w-full">
+                <TabsList className="grid w-full grid-cols-2 h-8">
+                  <TabsTrigger value="url" className="text-xs">
+                    URL
+                  </TabsTrigger>
+                  <TabsTrigger value="upload" className="text-xs">
+                    Upload
+                  </TabsTrigger>
+                </TabsList>
+                <TabsContent value="url" className="mt-2">
+                  <Input
+                    value={content.audioUrl || ""}
+                    onChange={(e) => handleContentChange(lang, "audioUrl", e.target.value)}
+                    placeholder="URL MP3…"
+                    className="h-8 text-xs"
+                  />
+                </TabsContent>
+                <TabsContent value="upload" className="mt-2 space-y-1">
+                  <p className="text-[10px] text-muted-foreground">MP3 uniquement.</p>
+                  <div className="relative">
+                    <Input
+                      type="file"
+                      accept={AUDIO_ACCEPT}
+                      disabled={isUploading || isUserLoading || !user}
+                      onChange={(e) => handleFileUpload(e, lang, "audioUrl")}
+                      className="h-8 text-xs cursor-pointer"
+                    />
+                    {(isUploading || isUserLoading) && (
+                      <div className="absolute inset-y-0 right-2 flex items-center">
+                        <Loader2 className="w-3 h-3 animate-spin text-primary" />
+                      </div>
+                    )}
+                  </div>
+                </TabsContent>
+              </Tabs>
+            )}
+          </div>
+        </div>
+
         <div className="space-y-2 p-4 bg-accent/5 rounded-xl border border-accent/10">
           <div className="flex items-center gap-2 mb-2">
             <Music className="w-4 h-4 text-accent" />
@@ -486,238 +705,6 @@ export function SongForm({
   return (
     <form onSubmit={handleSubmit} className="flex flex-col h-full">
       <div className="flex-1 p-6 space-y-8">
-        {/* Media Section */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-muted/30 rounded-2xl border border-primary/5">
-          <div className="md:col-span-2 flex flex-wrap items-center justify-between gap-2 pb-1 border-b border-primary/5">
-            <p className="text-xs font-medium text-muted-foreground">
-              {uiLanguage === "fr"
-                ? "Médias (partition + audio)"
-                : "Media (sheet + audio)"}
-            </p>
-            <SongMediaFormBadges
-              hasPartition={songHasPartition(formData)}
-              hasAudio={songHasAudio(formData)}
-              uiLanguage={uiLanguage}
-            />
-          </div>
-          <div className="space-y-3">
-            <div className="flex flex-col gap-0.5">
-              <div className="flex items-center justify-between gap-2 flex-wrap">
-                <div className="flex items-center gap-2">
-                  <FileImage className="w-4 h-4 text-primary" />
-                  <Label className="text-sm font-semibold text-primary/80">
-                    Partition (PDF ou image)
-                  </Label>
-                </div>
-              </div>
-              <p className="text-[10px] text-muted-foreground pl-6">
-                Colonne de gauche — pas les fichiers audio.
-              </p>
-            </div>
-            {partitionLocked ? (
-              <div className="rounded-lg border border-dashed border-primary/35 bg-muted/50 p-3 space-y-3">
-                <p className="text-[10px] text-muted-foreground leading-snug">
-                  {uiLanguage === "fr"
-                    ? "Une partition est déjà associée à ce chant. Supprimez-la pour pouvoir coller une autre URL ou en envoyer une nouvelle."
-                    : "Sheet music is already attached. Remove it before pasting another URL or uploading a new file."}
-                </p>
-                <p
-                  className="text-xs font-medium text-foreground/90 break-all"
-                  title={formData.partitionUrl}
-                >
-                  {formData.partitionUrl}
-                </p>
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      disabled={isUploading || isUserLoading}
-                      className="h-8 text-xs text-destructive border-destructive/30 hover:bg-destructive/10"
-                    >
-                      <Trash2 className="w-3 h-3 mr-1" />
-                      {uiLanguage === "fr" ? "Supprimer la partition" : "Remove sheet music"}
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>
-                        {uiLanguage === "fr"
-                          ? "Retirer la partition ?"
-                          : "Remove sheet music?"}
-                      </AlertDialogTitle>
-                      <AlertDialogDescription>
-                        {uiLanguage === "fr"
-                          ? "Le fichier sur Storage sera supprimé et le lien retiré du chant."
-                          : "The Storage file will be deleted and the link removed from this song."}
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>
-                        {uiLanguage === "fr" ? "Annuler" : "Cancel"}
-                      </AlertDialogCancel>
-                      <AlertDialogAction
-                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                        onClick={() => handleConfirmRemoveMedia("partitionUrl")}
-                      >
-                        {uiLanguage === "fr" ? "Supprimer" : "Remove"}
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              </div>
-            ) : (
-              <Tabs defaultValue="url" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 h-8">
-                  <TabsTrigger value="url" className="text-xs">
-                    URL
-                  </TabsTrigger>
-                  <TabsTrigger value="upload" className="text-xs">
-                    Upload
-                  </TabsTrigger>
-                </TabsList>
-                <TabsContent value="url" className="mt-2">
-                  <Input
-                    name="partitionUrl"
-                    value={formData.partitionUrl || ""}
-                    onChange={handleUrlChange}
-                    placeholder="URL PDF ou image..."
-                    className="h-8 text-xs"
-                  />
-                </TabsContent>
-                <TabsContent value="upload" className="mt-2 space-y-1">
-                  <p className="text-[10px] text-muted-foreground">
-                    PDF, PNG, JPEG, GIF ou WebP.
-                  </p>
-                  <div className="relative">
-                    <Input
-                      type="file"
-                      accept={PARTITION_ACCEPT}
-                      disabled={isUploading || isUserLoading || !user}
-                      onChange={(e) => handleFileUpload(e, "partitionUrl")}
-                      className="h-8 text-xs cursor-pointer"
-                    />
-                    {(isUploading || isUserLoading) && (
-                      <div className="absolute inset-y-0 right-2 flex items-center">
-                        <Loader2 className="w-3 h-3 animate-spin text-primary" />
-                      </div>
-                    )}
-                  </div>
-                </TabsContent>
-              </Tabs>
-            )}
-          </div>
-
-          <div className="space-y-3">
-            <div className="flex flex-col gap-0.5">
-              <div className="flex items-center gap-2">
-                <Volume2 className="w-4 h-4 text-primary" />
-                <Label className="text-sm font-semibold text-primary/80">
-                  Audio MP3
-                </Label>
-              </div>
-              <p className="text-[10px] text-muted-foreground pl-6">
-                Colonne de droite — choisir un fichier .mp3.
-              </p>
-            </div>
-            {audioLocked ? (
-              <div className="rounded-lg border border-dashed border-primary/35 bg-muted/50 p-3 space-y-3">
-                <p className="text-[10px] text-muted-foreground leading-snug">
-                  {uiLanguage === "fr"
-                    ? "Un fichier audio est déjà associé à ce chant. Supprimez-le pour pouvoir coller une autre URL ou en envoyer un nouveau."
-                    : "Audio is already attached. Remove it before pasting another URL or uploading a new file."}
-                </p>
-                <p
-                  className="text-xs font-medium text-foreground/90 break-all"
-                  title={formData.audioUrl}
-                >
-                  {formData.audioUrl}
-                </p>
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      disabled={isUploading || isUserLoading}
-                      className="h-8 text-xs text-destructive border-destructive/30 hover:bg-destructive/10"
-                    >
-                      <Trash2 className="w-3 h-3 mr-1" />
-                      {uiLanguage === "fr" ? "Supprimer l’audio" : "Remove audio"}
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>
-                        {uiLanguage === "fr"
-                          ? "Retirer l’audio ?"
-                          : "Remove audio?"}
-                      </AlertDialogTitle>
-                      <AlertDialogDescription>
-                        {uiLanguage === "fr"
-                          ? "Le fichier sur Storage sera supprimé et le lien retiré du chant."
-                          : "The Storage file will be deleted and the link removed from this song."}
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>
-                        {uiLanguage === "fr" ? "Annuler" : "Cancel"}
-                      </AlertDialogCancel>
-                      <AlertDialogAction
-                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                        onClick={() => handleConfirmRemoveMedia("audioUrl")}
-                      >
-                        {uiLanguage === "fr" ? "Supprimer" : "Remove"}
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              </div>
-            ) : (
-              <Tabs defaultValue="url" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 h-8">
-                  <TabsTrigger value="url" className="text-xs">
-                    URL
-                  </TabsTrigger>
-                  <TabsTrigger value="upload" className="text-xs">
-                    Upload
-                  </TabsTrigger>
-                </TabsList>
-                <TabsContent value="url" className="mt-2">
-                  <Input
-                    name="audioUrl"
-                    value={formData.audioUrl || ""}
-                    onChange={handleUrlChange}
-                    placeholder="URL MP3 ou flux audio..."
-                    className="h-8 text-xs"
-                  />
-                </TabsContent>
-                <TabsContent value="upload" className="mt-2 space-y-1">
-                  <p className="text-[10px] text-muted-foreground">
-                    Fichiers audio ; seul le MP3 est accepté à l’envoi.
-                  </p>
-                  <div className="relative">
-                    <Input
-                      type="file"
-                      accept={AUDIO_ACCEPT}
-                      disabled={isUploading || isUserLoading || !user}
-                      onChange={(e) => handleFileUpload(e, "audioUrl")}
-                      className="h-8 text-xs cursor-pointer"
-                    />
-                    {(isUploading || isUserLoading) && (
-                      <div className="absolute inset-y-0 right-2 flex items-center">
-                        <Loader2 className="w-3 h-3 animate-spin text-primary" />
-                      </div>
-                    )}
-                  </div>
-                </TabsContent>
-              </Tabs>
-            )}
-          </div>
-        </div>
-
-        {/* Lyrics & Metadata Tabs */}
         <div className="space-y-4">
           <div className="flex items-center gap-2 mb-2">
             <Languages className="w-5 h-5 text-primary" />

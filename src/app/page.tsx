@@ -26,9 +26,10 @@ import {
   useUser,
 } from "@/firebase";
 import { useToast } from "@/hooks/use-toast";
+import { normalizeSong, songWithLanguageMedia, type SongWithLegacyFields } from "@/lib/song-normalize";
 import { deleteFirebaseStorageObjectByUrl } from "@/lib/storage-helpers";
 import { NewSong, Song, getDisplayTitle } from "@/lib/types";
-import { collection, doc } from "firebase/firestore";
+import { collection, deleteField, doc } from "firebase/firestore";
 import { Download, Loader2, Music2, Plus, Upload } from "lucide-react";
 import * as React from "react";
 
@@ -62,7 +63,12 @@ export default function HarmonyForge() {
     return collection(db, "songs");
   }, [db, user?.uid]);
 
-  const { data: songs, isLoading: isSongsLoading } = useCollection<Song>(songsQuery);
+  const { data: rawSongs, isLoading: isSongsLoading } = useCollection<Song>(songsQuery);
+
+  const songs = React.useMemo(
+    () => (rawSongs ? rawSongs.map((s) => normalizeSong(s)) : null),
+    [rawSongs]
+  );
 
   const handleCreateNew = () => {
     setEditingSong(null);
@@ -101,22 +107,30 @@ export default function HarmonyForge() {
     }
   };
 
+  const mediaFieldPath = (lang: "en" | "fr", field: "partitionUrl" | "audioUrl") =>
+    `content.${lang}.${field}` as const;
+
   const handleMediaUploaded = React.useCallback(
     (
       songId: string,
+      lang: "en" | "fr",
       field: "partitionUrl" | "audioUrl",
       downloadUrl: string
     ) => {
       if (!db) return;
       const docRef = doc(db, "songs", songId);
-      updateDocumentNonBlocking(docRef, { [field]: downloadUrl });
+      updateDocumentNonBlocking(docRef, {
+        [mediaFieldPath(lang, field)]: downloadUrl,
+        partitionUrl: deleteField(),
+        audioUrl: deleteField(),
+      });
 
-      setEditingSong((prev) =>
-        prev?.id === songId ? { ...prev, [field]: downloadUrl } : prev
-      );
-      setSelectedSong((prev) =>
-        prev?.id === songId ? { ...prev, [field]: downloadUrl } : prev
-      );
+      const apply = (prev: Song | null) => {
+        if (prev?.id !== songId) return prev;
+        return songWithLanguageMedia(prev, lang, field, downloadUrl);
+      };
+      setEditingSong(apply);
+      setSelectedSong(apply);
     },
     [db]
   );
@@ -124,19 +138,24 @@ export default function HarmonyForge() {
   const handleSongMediaRemove = React.useCallback(
     async (
       songId: string,
+      lang: "en" | "fr",
       field: "partitionUrl" | "audioUrl",
       downloadUrl: string
     ) => {
       await deleteFirebaseStorageObjectByUrl(storage, downloadUrl);
       if (!db) return;
       const docRef = doc(db, "songs", songId);
-      updateDocumentNonBlocking(docRef, { [field]: "" });
-      setEditingSong((prev) =>
-        prev?.id === songId ? { ...prev, [field]: "" } : prev
-      );
-      setSelectedSong((prev) =>
-        prev?.id === songId ? { ...prev, [field]: "" } : prev
-      );
+      updateDocumentNonBlocking(docRef, {
+        [mediaFieldPath(lang, field)]: "",
+        partitionUrl: deleteField(),
+        audioUrl: deleteField(),
+      });
+      const apply = (prev: Song | null) => {
+        if (prev?.id !== songId) return prev;
+        return songWithLanguageMedia(prev, lang, field, "");
+      };
+      setEditingSong(apply);
+      setSelectedSong(apply);
     },
     [db, storage]
   );
@@ -144,9 +163,15 @@ export default function HarmonyForge() {
   const handleSave = (songData: Song | NewSong) => {
     if (!db) return;
 
+    const payloadWithLegacyStripped = {
+      ...songData,
+      partitionUrl: deleteField(),
+      audioUrl: deleteField(),
+    };
+
     if ("id" in songData && songData.id) {
       const docRef = doc(db, "songs", songData.id);
-      updateDocumentNonBlocking(docRef, songData);
+      updateDocumentNonBlocking(docRef, payloadWithLegacyStripped);
 
       if (selectedSong?.id === songData.id) {
         setSelectedSong(songData as Song);
@@ -157,7 +182,11 @@ export default function HarmonyForge() {
       const newSongWithId: Song = { ...songData, id: customId } as Song;
       const docRef = doc(db, "songs", customId);
 
-      setDocumentNonBlocking(docRef, newSongWithId, {});
+      setDocumentNonBlocking(
+        docRef,
+        { ...newSongWithId, partitionUrl: deleteField(), audioUrl: deleteField() },
+        {}
+      );
       toast({ title: "Song created", description: "New song added to the collection." });
     }
     setIsFormOpen(false);
@@ -182,7 +211,7 @@ export default function HarmonyForge() {
       "ID",
       "EN_Number", "EN_Title", "EN_Author", "EN_Year", "EN_Key",
       "FR_Number", "FR_Title", "FR_Author", "FR_Year", "FR_Key",
-      "PartitionURL", "AudioURL"
+      "EN_PartitionURL", "EN_AudioURL", "FR_PartitionURL", "FR_AudioURL",
     ];
 
     const rows = songs.map(s => [
@@ -197,8 +226,10 @@ export default function HarmonyForge() {
       s.content?.fr?.author || "",
       s.content?.fr?.year || "",
       s.content?.fr?.key || "",
-      s.partitionUrl || "",
-      s.audioUrl || ""
+      s.content?.en?.partitionUrl || "",
+      s.content?.en?.audioUrl || "",
+      s.content?.fr?.partitionUrl || "",
+      s.content?.fr?.audioUrl || "",
     ].map(val => `"${String(val).replace(/"/g, '""')}"`).join(","));
 
     const csvContent = [headers.join(","), ...rows].join("\n");
@@ -224,10 +255,16 @@ export default function HarmonyForge() {
         const importedData = JSON.parse(result);
         if (!Array.isArray(importedData)) throw new Error("Invalid format");
 
-        importedData.forEach((song: any) => {
-          if (!song.content) return;
-          const id = song.id || Math.random().toString(36).substring(2, 11);
-          setDocumentNonBlocking(doc(db, "songs", id), { ...song, id }, {});
+        importedData.forEach((raw: unknown) => {
+          const row = raw as { id?: string; content?: Song["content"] };
+          if (!row.content) return;
+          const id = row.id || Math.random().toString(36).substring(2, 11);
+          const normalized = normalizeSong({ ...(raw as object), id } as SongWithLegacyFields);
+          setDocumentNonBlocking(
+            doc(db, "songs", id),
+            { ...normalized, partitionUrl: deleteField(), audioUrl: deleteField() },
+            {}
+          );
         });
         toast({ title: "Import Successful", description: `${importedData.length} songs imported.` });
       } catch (err) {
@@ -247,24 +284,102 @@ export default function HarmonyForge() {
     reader.onload = (event) => {
       try {
         const text = event.target?.result as string;
-        const lines = text.split(/\r?\n/).filter(l => l.trim());
+        const lines = text.split(/\r?\n/).filter((l) => l.trim());
+        const isNewFormat =
+          lines[0]?.includes("EN_PartitionURL") && lines[0]?.includes("FR_PartitionURL");
         let count = 0;
         for (let i = 1; i < lines.length; i++) {
           const parts = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-          if (parts.length >= 13) {
-            const clean = (s: string) => s?.trim().replace(/^"|"$/g, '').replace(/""/g, '"') || "";
-            const [id, enNum, enTitle, enAuthor, enYear, enKey, frNum, frTitle, frAuthor, frYear, frKey, pUrl, aUrl] = parts.map(clean);
+          const clean = (s: string) =>
+            s?.trim().replace(/^"|"$/g, "").replace(/""/g, '"') || "";
+          if (isNewFormat && parts.length >= 15) {
+            const [
+              id,
+              enNum,
+              enTitle,
+              enAuthor,
+              enYear,
+              enKey,
+              frNum,
+              frTitle,
+              frAuthor,
+              frYear,
+              frKey,
+              enP,
+              enA,
+              frP,
+              frA,
+            ] = parts.map(clean);
             const songId = id || Math.random().toString(36).substring(2, 11);
             const song: Song = {
               id: songId,
               content: {
-                en: { number: enNum, title: enTitle, author: enAuthor, year: enYear, key: enKey, verses: [], chorus: "" },
-                fr: { number: frNum, title: frTitle, author: frAuthor, year: frYear, key: frKey, verses: [], chorus: "" },
+                en: {
+                  number: enNum,
+                  title: enTitle,
+                  author: enAuthor,
+                  year: enYear,
+                  key: enKey,
+                  verses: [],
+                  chorus: "",
+                  partitionUrl: enP,
+                  audioUrl: enA,
+                },
+                fr: {
+                  number: frNum,
+                  title: frTitle,
+                  author: frAuthor,
+                  year: frYear,
+                  key: frKey,
+                  verses: [],
+                  chorus: "",
+                  partitionUrl: frP,
+                  audioUrl: frA,
+                },
               },
-              partitionUrl: pUrl,
-              audioUrl: aUrl
             };
-            setDocumentNonBlocking(doc(db, "songs", songId), song, {});
+            setDocumentNonBlocking(
+              doc(db, "songs", songId),
+              { ...song, partitionUrl: deleteField(), audioUrl: deleteField() },
+              {}
+            );
+            count++;
+          } else if (parts.length >= 13) {
+            const [id, enNum, enTitle, enAuthor, enYear, enKey, frNum, frTitle, frAuthor, frYear, frKey, pUrl, aUrl] =
+              parts.map(clean);
+            const songId = id || Math.random().toString(36).substring(2, 11);
+            const song: Song = {
+              id: songId,
+              content: {
+                en: {
+                  number: enNum,
+                  title: enTitle,
+                  author: enAuthor,
+                  year: enYear,
+                  key: enKey,
+                  verses: [],
+                  chorus: "",
+                  partitionUrl: pUrl,
+                  audioUrl: aUrl,
+                },
+                fr: {
+                  number: frNum,
+                  title: frTitle,
+                  author: frAuthor,
+                  year: frYear,
+                  key: frKey,
+                  verses: [],
+                  chorus: "",
+                  partitionUrl: pUrl,
+                  audioUrl: aUrl,
+                },
+              },
+            };
+            setDocumentNonBlocking(
+              doc(db, "songs", songId),
+              { ...song, partitionUrl: deleteField(), audioUrl: deleteField() },
+              {}
+            );
             count++;
           }
         }

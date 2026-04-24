@@ -47,9 +47,10 @@ interface SongViewProps {
   onEdit: (song: Song) => void;
   onDelete: (song: Song) => void;
   onBack: () => void;
-  /** Supprime le fichier Storage (si applicable) et vide le champ pour ce chant. */
+  /** Supprime le fichier Storage (si applicable) et vide le champ pour cette version linguistique. */
   onSongMediaRemove?: (
     songId: string,
+    mediaLang: "en" | "fr",
     field: "partitionUrl" | "audioUrl",
     downloadUrl: string
   ) => Promise<void>;
@@ -96,8 +97,8 @@ export function SongView({
     song.content?.fr?.verses?.some((v) => lyricHasText(v))
   );
 
-  const partitionUrl = song.partitionUrl?.trim() ?? "";
-  const audioUrl = song.audioUrl?.trim() ?? "";
+  const partitionUrl = currentContent?.partitionUrl?.trim() ?? "";
+  const audioUrl = currentContent?.audioUrl?.trim() ?? "";
   const partitionIsPdf = partitionUrl ? isPdfUrl(partitionUrl) : false;
   const partitionIsImage =
     partitionUrl && !partitionIsPdf ? isImageUrl(partitionUrl) : false;
@@ -105,7 +106,7 @@ export function SongView({
   React.useEffect(() => {
     if (viewTab === "partition" && !partitionUrl) setViewTab("lyrics");
     if (viewTab === "audio" && !audioUrl) setViewTab("lyrics");
-  }, [viewTab, partitionUrl, audioUrl]);
+  }, [viewTab, partitionUrl, audioUrl, lyricsLang]);
 
   const handleConfirmRemoveMedia = async (
     field: "partitionUrl" | "audioUrl"
@@ -114,7 +115,7 @@ export function SongView({
     if (!onSongMediaRemove || !song.id || !url) return;
     setIsRemovingMedia(true);
     try {
-      await onSongMediaRemove(song.id, field, url);
+      await onSongMediaRemove(song.id, lyricsLang, field, url);
       setViewTab("lyrics");
       toast({
         title: uiLanguage === "fr" ? "Média supprimé" : "Media removed",
@@ -175,6 +176,7 @@ export function SongView({
                 )}
                 <SongMediaIndicators
                   song={song}
+                  mediaLang={lyricsLang}
                   uiLanguage={uiLanguage ?? "en"}
                   size="md"
                   className="items-center"

@@ -12,7 +12,9 @@ import { cn } from "@/lib/utils";
 import { FileImage, Volume2 } from "lucide-react";
 
 type SongMediaIndicatorsProps = {
-  song: Pick<Song, "partitionUrl" | "audioUrl">;
+  song: Song;
+  /** Indique quelle version linguistique afficher (alignée sur l’EN/FR de la ligne ou de la fiche). */
+  mediaLang: "en" | "fr";
   uiLanguage?: "en" | "fr";
   /** Liste : icônes compactes ; détail : peut être un peu plus grand */
   size?: "sm" | "md";
@@ -38,12 +40,13 @@ const labels = {
  */
 export function SongMediaIndicators({
   song,
+  mediaLang,
   uiLanguage = "en",
   size = "sm",
   className,
 }: SongMediaIndicatorsProps) {
-  const hasP = songHasPartition(song);
-  const hasA = songHasAudio(song);
+  const hasP = songHasPartition(song, mediaLang);
+  const hasA = songHasAudio(song, mediaLang);
   const L = labels[uiLanguage];
 
   if (!hasP && !hasA) return null;
